@@ -982,107 +982,227 @@
 }
 
 /* Estilos para o Modal de Exportação */
-.export-format {
-    margin-bottom: 2rem;
-    padding: 1rem;
-    background: #f8f9fa;
-    border-radius: 8px;
-}
-
-.format-options {
-    display: flex;
-    gap: 2rem;
-    margin-top: 1rem;
-}
-
-.format-options label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    transition: background-color 0.2s;
-}
-
-.format-options label:hover {
-    background-color: #e9ecef;
-}
-
-.format-options input[type="radio"] {
-    margin: 0;
-}
-
-.format-options i {
-    font-size: 1.2rem;
-}
-
-.format-options label:has(input[value="excel"]) i {
-    color: #217346;
-}
-
-.format-options label:has(input[value="pdf"]) i {
-    color: #dc3545;
-}
-
-.export-options {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
-
-.export-section {
-    background: #f8f9fa;
-    padding: 1.25rem;
-    border-radius: 8px;
-    border: 1px solid #e9ecef;
-}
-
-.export-section h3 {
-    margin: 0 0 1rem 0;
-    color: #495057;
-    font-size: 1.1rem;
-    font-weight: 600;
-}
-
-.checkbox-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-.checkbox-group label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    color: #495057;
-}
-
-.checkbox-group input[type="checkbox"],
-.checkbox-group input[type="radio"] {
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
+#modal-exportar {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
 }
 
 #modal-exportar .modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
     max-width: 600px;
-    width: 90%;
 }
 
 #modal-exportar .modal-body {
-    max-height: 70vh;
-    overflow-y: auto;
+    padding: 20px;
+}
+
+/* Estilos para o modal de detalhes do sawing */
+#modalDetalhesSawing .modal-content {
+    max-width: 1200px;
+    width: 95%;
+}
+
+#modalDetalhesSawing .modal-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 15px 20px;
+    border-radius: 5px 5px 0 0;
+}
+
+#modalDetalhesSawing .modal-header h2 {
+    margin: 0;
+    color: #333;
+    font-size: 1.5rem;
+}
+
+#modalDetalhesSawing .modal-body {
+    padding: 20px;
+}
+
+#modalDetalhesSawing .resumo-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+#modalDetalhesSawing .resumo-card {
+    flex: 1;
+    min-width: 200px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    text-align: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+#modalDetalhesSawing .resumo-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+}
+
+#modalDetalhesSawing .resumo-valor {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+#modalDetalhesSawing .resumo-label {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+#modalDetalhesSawing .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+#modalDetalhesSawing .info-item {
+    background-color: #f8f9fa;
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 3px solid #007bff;
+}
+
+#modalDetalhesSawing .info-item .label {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+#modalDetalhesSawing .info-item .value {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #333;
+}
+
+#modalDetalhesSawing .info-cotacao {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 25px;
+}
+
+#modalDetalhesSawing .info-cotacao h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #333;
+    font-size: 1.1rem;
+}
+
+#modalDetalhesSawing .info-cotacao p {
+    margin: 0;
+    color: #555;
+    line-height: 1.5;
+}
+
+#modalDetalhesSawing .produto-section {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 25px;
+}
+
+#modalDetalhesSawing .produto-section h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+    font-size: 1.1rem;
+}
+
+#modalDetalhesSawing .itens-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+#modalDetalhesSawing .itens-table th,
+#modalDetalhesSawing .itens-table td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+#modalDetalhesSawing .itens-table th {
+    background-color: #f2f2f2;
+    font-weight: 600;
+    color: #333;
+    position: sticky;
+    top: 0;
+}
+
+#modalDetalhesSawing .itens-table tr:hover {
+    background-color: #f8f9fa;
+}
+
+#modalDetalhesSawing .variacao-positiva {
+    color: #28a745;
+    font-weight: 500;
+}
+
+#modalDetalhesSawing .variacao-negativa {
+    color: #dc3545;
+    font-weight: 500;
+}
+
+#modalDetalhesSawing .variacao-neutra {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+#modalDetalhesSawing .economia-percentual {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    margin-left: 3px;
+}
+
+#modalDetalhesSawing .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 15px 20px;
+    border-top: 1px solid #e0e0e0;
+}
+
+#modalDetalhesSawing .btn-grande {
+    padding: 8px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s;
+}
+
+#modalDetalhesSawing .btn-grande:hover {
+    background-color: #0069d9;
 }
 
 @media (max-width: 768px) {
-    .format-options {
+    #modalDetalhesSawing .resumo-cards {
         flex-direction: column;
-        gap: 1rem;
     }
     
-    .export-section {
-        padding: 1rem;
+    #modalDetalhesSawing .info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    #modalDetalhesSawing .itens-table {
+        display: block;
+        overflow-x: auto;
     }
 }

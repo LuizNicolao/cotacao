@@ -1024,12 +1024,7 @@
 }
 
 /* Variação positiva (preço aumentou) */
-.variacao-positiva {
-    color: #fff;
-    background-color: rgba(231, 76, 60, 0.8);
-    border-left: 3px solid #c0392b;
-    padding-left: 8px;
-}
+
 
 /* Variação negativa (preço diminuiu) */
 .variacao-negativa {

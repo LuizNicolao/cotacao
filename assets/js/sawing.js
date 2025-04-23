@@ -209,8 +209,6 @@ function formatarMoeda(valor) {
     });
 }
 
-
-
 // Função para renderizar a paginação
 function renderizarPaginacao(total, paginaAtual, limite) {
     const paginacao = document.getElementById('paginacao');
@@ -371,32 +369,32 @@ function renderizarResumo(resumo) {
                     <div class="comprador-nome">
                         ${piorComprador.comprador_nome}
                         <span class="comprador-badge pior"><i class="fas fa-exclamation-triangle"></i> Pior Comprador</span>
-                </div>
+                    </div>
                     <div class="comprador-metrica economia">
                         <span class="comprador-metrica-label">Economia Total:</span>
                         <span class="comprador-metrica-valor">R$ ${formatarNumero(piorComprador.economia_total)}</span>
-                                </div>
+                    </div>
                     <div class="comprador-metrica">
                         <span class="comprador-metrica-label">Economia (%):</span>
                         <span class="comprador-metrica-valor">${economiaPercentualPior.toFixed(2)}%</span>
-                            </div>
+                    </div>
                     <div class="comprador-metrica negociado">
                         <span class="comprador-metrica-label">Total Negociado:</span>
                         <span class="comprador-metrica-valor">R$ ${formatarNumero(piorComprador.valor_total_inicial)}</span>
-                        </div>
+                    </div>
                     <div class="comprador-metrica aprovado">
                         <span class="comprador-metrica-label">Total Aprovado:</span>
                         <span class="comprador-metrica-valor">R$ ${formatarNumero(piorComprador.valor_total_final)}</span>
-                                </div>
+                    </div>
                     <div class="comprador-metrica rodadas">
                         <span class="comprador-metrica-label">Total de Rodadas:</span>
                         <span class="comprador-metrica-valor">${piorComprador.total_rodadas}</span>
-                            </div>
+                    </div>
                     <div class="comprador-metrica">
                         <span class="comprador-metrica-label">Total de Registros:</span>
                         <span class="comprador-metrica-valor">${piorComprador.total_registros}</span>
-                        </div>
-                                </div>
+                    </div>
+                </div>
             `;
         }
 
@@ -417,7 +415,7 @@ function renderizarResumo(resumo) {
                     <div class="comprador-card">
                         <div class="comprador-nome">
                             ${comprador.comprador_nome}
-                            </div>
+                        </div>
                         <div class="comprador-metrica economia">
                             <span class="comprador-metrica-label">Economia Total:</span>
                             <span class="comprador-metrica-valor">R$ ${formatarNumero(comprador.economia_total)}</span>
@@ -425,11 +423,11 @@ function renderizarResumo(resumo) {
                         <div class="comprador-metrica">
                             <span class="comprador-metrica-label">Economia (%):</span>
                             <span class="comprador-metrica-valor">${economiaPercentual.toFixed(2)}%</span>
-                                </div>
+                        </div>
                         <div class="comprador-metrica negociado">
                             <span class="comprador-metrica-label">Total Negociado:</span>
                             <span class="comprador-metrica-valor">R$ ${formatarNumero(comprador.valor_total_inicial)}</span>
-                            </div>
+                        </div>
                         <div class="comprador-metrica aprovado">
                             <span class="comprador-metrica-label">Total Aprovado:</span>
                             <span class="comprador-metrica-valor">R$ ${formatarNumero(comprador.valor_total_final)}</span>
@@ -437,19 +435,18 @@ function renderizarResumo(resumo) {
                         <div class="comprador-metrica rodadas">
                             <span class="comprador-metrica-label">Total de Rodadas:</span>
                             <span class="comprador-metrica-valor">${comprador.total_rodadas}</span>
-                    </div>
+                        </div>
                         <div class="comprador-metrica">
                             <span class="comprador-metrica-label">Total de Registros:</span>
                             <span class="comprador-metrica-valor">${comprador.total_registros}</span>
-                </div>
-            </div>
-        `;
+                        </div>
+                    </div>
+                `;
             });
             compradoresCards.innerHTML = html;
         }
     }
 }
-
 
 // Função para traduzir status
 function traduzirStatus(status) {
@@ -466,23 +463,73 @@ function traduzirStatus(status) {
 // Função para ver detalhes de um registro
 async function verDetalhes(id) {
     try {
-        const response = await fetch(`api/sawing.php?acao=detalhes&id=${id}`);
+        const response = await fetch(`api/sawing.php?id=${id}`);
         const data = await response.json();
         
-        if (data.erro) {
-            throw new Error(data.mensagem);
+        if (data.error) {
+            throw new Error(data.error);
+        }
+
+        // Verificar se os dados do sawing existem
+        if (!data) {
+            throw new Error('Dados do sawing não encontrados');
         }
 
         // Preencher os dados do modal
-        document.getElementById('sawing-id').textContent = data.sawing.id;
-        document.getElementById('sawing-data').textContent = formatarData(data.sawing.data_registro);
-        document.getElementById('sawing-valor-inicial').textContent = `R$ ${formatarNumero(data.sawing.valor_total_inicial)}`;
-        document.getElementById('sawing-valor-final').textContent = `R$ ${formatarNumero(data.sawing.valor_total_final)}`;
-        document.getElementById('sawing-economia').textContent = `R$ ${formatarNumero(data.sawing.economia)}`;
-        document.getElementById('sawing-economia-percentual').textContent = `${data.sawing.economia_percentual.toFixed(2)}%`;
-        document.getElementById('sawing-rodadas').textContent = data.sawing.rodadas;
-        document.getElementById('sawing-status').textContent = data.sawing.status;
-        document.getElementById('sawing-observacoes').textContent = data.sawing.observacoes || 'Nenhuma observação';
+        document.getElementById('sawing-id').textContent = data.id || '';
+        document.getElementById('sawing-data').textContent = formatarData(data.data_registro);
+        
+        // Formatar valores monetários
+        const valorInicial = parseFloat(data.valor_total_inicial || 0);
+        const valorFinal = parseFloat(data.valor_total_final || 0);
+        const economia = parseFloat(data.economia || 0);
+        
+        document.getElementById('sawing-valor-inicial').textContent = `R$ ${formatarNumero(valorInicial)}`;
+        document.getElementById('sawing-valor-final').textContent = `R$ ${formatarNumero(valorFinal)}`;
+        document.getElementById('sawing-economia').textContent = `R$ ${formatarNumero(economia)}`;
+        
+        // Verificar se economia_percentual é um número antes de chamar toFixed
+        const economiaPercentual = parseFloat(data.economia_percentual || 0);
+        document.getElementById('sawing-economia-percentual').textContent = `${isNaN(economiaPercentual) ? '0.00' : economiaPercentual.toFixed(2)}%`;
+        
+        // Adicionar classe de cor para economia
+        const economiaElement = document.getElementById('sawing-economia');
+        if (economia > 0) {
+            economiaElement.classList.add('variacao-positiva');
+        } else if (economia < 0) {
+            economiaElement.classList.add('variacao-negativa');
+        } else {
+            economiaElement.classList.add('variacao-neutra');
+        }
+        
+        // Adicionar classe de cor para economia percentual
+        const economiaPercentualElement = document.getElementById('sawing-economia-percentual');
+        if (economiaPercentual > 0) {
+            economiaPercentualElement.classList.add('variacao-positiva');
+        } else if (economiaPercentual < 0) {
+            economiaPercentualElement.classList.add('variacao-negativa');
+        } else {
+            economiaPercentualElement.classList.add('variacao-neutra');
+        }
+        
+        document.getElementById('sawing-rodadas').textContent = data.rodadas || '1';
+        
+        // Formatar status com classe de cor
+        const statusElement = document.getElementById('sawing-status');
+        const status = data.status || 'Pendente';
+        statusElement.textContent = status;
+        
+        // Adicionar classe de cor para status
+        statusElement.className = ''; // Limpar classes existentes
+        if (status.toLowerCase() === 'concluido') {
+            statusElement.classList.add('variacao-positiva');
+        } else if (status.toLowerCase() === 'cancelado') {
+            statusElement.classList.add('variacao-negativa');
+        } else if (status.toLowerCase() === 'em_andamento') {
+            statusElement.classList.add('variacao-neutra');
+        }
+        
+        document.getElementById('sawing-observacoes').textContent = data.observacoes || 'Nenhuma observação';
 
         // Renderizar os produtos
         if (data.produtos && data.produtos.length > 0) {
@@ -495,15 +542,14 @@ async function verDetalhes(id) {
             renderizarProdutos([]);
         }
 
-        // Mostrar o modal
-        const modal = new bootstrap.Modal(document.getElementById('modalDetalhesSawing'));
-        modal.show();
+        // Mostrar o modal usando o estilo do modal_aprovacoes.css
+        const modal = document.getElementById('modalDetalhesSawing');
+        modal.style.display = 'block';
     } catch (error) {
         console.error('Erro ao carregar detalhes:', error);
         alert('Erro ao carregar os detalhes do sawing: ' + error.message);
     }
 }
-
 
 // Função para renderizar produtos no modal de detalhes
 function renderizarProdutos(produtos) {
@@ -512,7 +558,7 @@ function renderizarProdutos(produtos) {
 
     let html = `
         <div class="table-responsive">
-            <table class="table table-hover">
+            <table class="itens-table">
                 <thead>
                     <tr>
                         <th>Produto</th>
@@ -530,6 +576,10 @@ function renderizarProdutos(produtos) {
         const economia = produto.valor_unitario_inicial - produto.valor_unitario_final;
         const economiaPercentual = produto.valor_unitario_inicial > 0 ? 
             (economia / produto.valor_unitario_inicial * 100) : 0;
+        
+        // Determinar a classe de economia para estilização
+        const economiaClass = economia > 0 ? 'variacao-positiva' : 
+                            (economia < 0 ? 'variacao-negativa' : 'variacao-neutra');
 
         html += `
             <tr>
@@ -537,8 +587,8 @@ function renderizarProdutos(produtos) {
                 <td>${produto.quantidade}</td>
                 <td>R$ ${formatarNumero(produto.valor_unitario_inicial)}</td>
                 <td>R$ ${formatarNumero(produto.valor_unitario_final)}</td>
-                <td>
-                    <span class="economia-valor">R$ ${formatarNumero(economia)}</span>
+                <td class="${economiaClass}">
+                    R$ ${formatarNumero(economia)}
                     <span class="economia-percentual">(${economiaPercentual.toFixed(2)}%)</span>
                 </td>
                 <td>${produto.fornecedor_nome}</td>
@@ -555,13 +605,10 @@ function renderizarProdutos(produtos) {
     container.innerHTML = html;
 }
 
-
 // Função auxiliar para formatar números
 function formatarNumero(valor) {
     return parseFloat(valor).toFixed(2).replace('.', ',');
 }
-
-
 
 // Função para criar gráfico de economia
 function criarGraficoEconomia(produtos) {
@@ -798,7 +845,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-
 // Função para aplicar filtros
 function aplicarFiltros() {
     carregarDados(1); // Voltar para a primeira página ao aplicar filtros
@@ -972,5 +1018,51 @@ function exportarComOpcoes() {
         modal.style.display = 'none';
     }
 }
+
+// Função para formatar data
+function formatarData(dataString) {
+    if (!dataString) return '';
+    
+    const data = new Date(dataString);
+    
+    // Verificar se a data é válida
+    if (isNaN(data.getTime())) {
+        return dataString; // Retornar a string original se não for uma data válida
+    }
+    
+    // Formatar para dd/mm/yyyy hh:mm
+    const dia = String(data.getDate()).padStart(2, '0');
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const ano = data.getFullYear();
+    const hora = String(data.getHours()).padStart(2, '0');
+    const minuto = String(data.getMinutes()).padStart(2, '0');
+    
+    return `${dia}/${mes}/${ano} ${hora}:${minuto}`;
+}
+
+// Adicionar event listeners para fechar o modal
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('modalDetalhesSawing');
+    const btnFechar = document.getElementById('btn-fechar-modal');
+    const btnFecharFooter = document.getElementById('btn-fechar-modal-footer');
+
+    if (btnFechar) {
+        btnFechar.onclick = function() {
+            modal.style.display = 'none';
+        }
+    }
+
+    if (btnFecharFooter) {
+        btnFecharFooter.onclick = function() {
+            modal.style.display = 'none';
+        }
+    }
+
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    }
+});
 
 

@@ -24,6 +24,7 @@ if (!userCan('sawing', 'visualizar')) {
     <title>Sawing - Sistema de Cotações</title>
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="assets/css/sawing.css">
+    <link rel="stylesheet" href="assets/css/modal_aprovacoes.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 
@@ -163,70 +164,69 @@ if (!userCan('sawing', 'visualizar')) {
     </div>
 
     <!-- Modal de Detalhes -->
-    <div class="modal fade" id="modalDetalhesSawing" tabindex="-1" aria-labelledby="modalDetalhesSawingLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalDetalhesSawingLabel">Detalhes do Sawing</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <h6>Informações Gerais</h6>
-                            <table class="table table-sm">
-                                <tr>
-                                    <th>ID:</th>
-                                    <td id="sawing-id"></td>
-                                </tr>
-                                <tr>
-                                    <th>Data:</th>
-                                    <td id="sawing-data"></td>
-                                </tr>
-                                <tr>
-                                    <th>Valor Inicial:</th>
-                                    <td id="sawing-valor-inicial"></td>
-                                </tr>
-                                <tr>
-                                    <th>Valor Final:</th>
-                                    <td id="sawing-valor-final"></td>
-                                </tr>
-                                <tr>
-                                    <th>Economia:</th>
-                                    <td id="sawing-economia"></td>
-                                </tr>
-                                <tr>
-                                    <th>Economia %:</th>
-                                    <td id="sawing-economia-percentual"></td>
-                                </tr>
-                                <tr>
-                                    <th>Rodadas:</th>
-                                    <td id="sawing-rodadas"></td>
-                                </tr>
-                                <tr>
-                                    <th>Status:</th>
-                                    <td id="sawing-status"></td>
-                                </tr>
-                                <tr>
-                                    <th>Observações:</th>
-                                    <td id="sawing-observacoes"></td>
-                                </tr>
-                            </table>
-                        </div>
+    <div id="modalDetalhesSawing" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Detalhes do Sawing</h2>
+                <span class="close" id="btn-fechar-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <!-- Resumo com cards -->
+                <div class="resumo-cards">
+                    <div class="resumo-card">
+                        <div class="resumo-valor" id="sawing-valor-inicial">R$ 0,00</div>
+                        <div class="resumo-label">Valor Inicial</div>
                     </div>
+                    <div class="resumo-card">
+                        <div class="resumo-valor" id="sawing-valor-final">R$ 0,00</div>
+                        <div class="resumo-label">Valor Final</div>
+                    </div>
+                    <div class="resumo-card">
+                        <div class="resumo-valor" id="sawing-economia">R$ 0,00</div>
+                        <div class="resumo-label">Economia</div>
+                    </div>
+                    <div class="resumo-card">
+                        <div class="resumo-valor" id="sawing-economia-percentual">0%</div>
+                        <div class="resumo-label">Economia (%)</div>
+                    </div>
+                </div>
 
-                    <div class="row">
-                        <div class="col-12">
-                            <h6>Produtos Negociados</h6>
-                            <div id="produtos-container">
-                                <!-- A tabela de produtos será inserida aqui via JavaScript -->
-                            </div>
-                        </div>
+                <!-- Informações detalhadas -->
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="label">ID</div>
+                        <div class="value" id="sawing-id"></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">Data</div>
+                        <div class="value" id="sawing-data"></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">Rodadas</div>
+                        <div class="value" id="sawing-rodadas"></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">Status</div>
+                        <div class="value" id="sawing-status"></div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+
+                <!-- Observações -->
+                <div class="info-cotacao">
+                    <h4>Observações</h4>
+                    <p id="sawing-observacoes">Nenhuma observação</p>
                 </div>
+
+                <!-- Produtos -->
+                <div class="produto-section">
+                    <h4>Produtos Negociados</h4>
+                    <div id="produtos-container">
+                        <!-- A tabela de produtos será inserida aqui via JavaScript -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-grande" id="btn-fechar-modal-footer">Fechar</button>
             </div>
         </div>
     </div>
