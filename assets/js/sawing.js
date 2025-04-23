@@ -479,6 +479,10 @@ async function verDetalhes(id) {
         document.getElementById('sawing-id').textContent = data.id || '';
         document.getElementById('sawing-data').textContent = formatarData(data.data_registro);
         
+        // Exibir data de aprovação se existir
+        const dataAprovacao = data.data_aprovacao ? formatarData(data.data_aprovacao) : 'Não aprovado';
+        document.getElementById('sawing-data-aprovacao').textContent = dataAprovacao;
+        
         // Formatar valores monetários
         const valorInicial = parseFloat(data.valor_total_inicial || 0);
         const valorFinal = parseFloat(data.valor_total_final || 0);

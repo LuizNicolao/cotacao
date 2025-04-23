@@ -206,9 +206,10 @@ function obterDetalhes($conn, $id) {
     try {
         // Obter dados básicos do registro
         $stmt = $conn->prepare("
-            SELECT s.*, u.nome as comprador_nome
+            SELECT s.*, u.nome as comprador_nome, c.data_aprovacao
             FROM sawing s
             LEFT JOIN usuarios u ON s.usuario_id = u.id
+            LEFT JOIN cotacoes c ON s.cotacao_id = c.id
             WHERE s.id = ?
         ");
         $stmt->execute([$id]);

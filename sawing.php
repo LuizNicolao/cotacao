@@ -198,8 +198,12 @@ if (!userCan('sawing', 'visualizar')) {
                         <div class="value" id="sawing-id"></div>
                     </div>
                     <div class="info-item">
-                        <div class="label">Data</div>
+                        <div class="label">Data de Criação</div>
                         <div class="value" id="sawing-data"></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">Data de Aprovação</div>
+                        <div class="value" id="sawing-data-aprovacao"></div>
                     </div>
                     <div class="info-item">
                         <div class="label">Rodadas</div>
