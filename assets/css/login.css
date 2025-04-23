@@ -1,0 +1,120 @@
+body {
+    font-family: 'Roboto', sans-serif;
+    background: linear-gradient(135deg, #0f7142 0%, #0a5a34 100%);
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.login-container {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+}
+
+.login-box {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+    padding: 40px;
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.login-box:hover {
+    transform: translateY(-5px);
+}
+
+.login-box h2 {
+    color: #333;
+    margin-bottom: 30px;
+    font-size: 28px;
+    font-weight: 500;
+}
+
+.form-group {
+    margin-bottom: 25px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #555;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px 12px;
+    padding-left: 0%;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+.form-group input:focus {
+    border-color: #0f7142;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(15, 113, 66, 0.2);
+}
+
+button {
+    background: linear-gradient(to right, #0f7142, #0a5a34);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 12px 20px;
+    width: 100%;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+button:hover {
+    background: linear-gradient(to right, #0a5a34, #0f7142);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(15, 113, 66, 0.4);
+}
+
+.alert {
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.logo {
+    margin-bottom: 30px;
+}
+
+.logo img {
+    max-width: 150px;
+    height: auto;
+}
+
+.logo i {
+    color: #0f7142 !important;
+}
+
+/* Add animation */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.login-box {
+    animation: fadeIn 0.5s ease-out;
+}
