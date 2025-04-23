@@ -272,31 +272,31 @@ function renderizarResumo(resumo) {
     // Atualizar economia total
     const economiaTotal = document.getElementById('economia-total');
     if (economiaTotal) {
-        economiaTotal.textContent = 'R$ ' + formatarNumero(resumo.economia_total);
+        economiaTotal.textContent = 'R$ ' + formatarNumero(resumo.economia_total || 0);
     }
     
     // Atualizar economia percentual média
     const economiaPercentual = document.getElementById('economia-percentual-media');
     if (economiaPercentual) {
-        economiaPercentual.textContent = resumo.economia_percentual.toFixed(2) + '%';
+        economiaPercentual.textContent = (resumo.economia_percentual || 0).toFixed(2) + '%';
     }
     
     // Atualizar total de rodadas
     const rodadasMedia = document.getElementById('rodadas-media');
     if (rodadasMedia) {
-        rodadasMedia.textContent = resumo.total_rodadas;
+        rodadasMedia.textContent = resumo.total_rodadas || 0;
     }
     
     // Atualizar total negociado
     const totalNegociado = document.getElementById('total-negociado');
     if (totalNegociado) {
-        totalNegociado.textContent = 'R$ ' + formatarNumero(resumo.total_negociado);
+        totalNegociado.textContent = 'R$ ' + formatarNumero(resumo.total_negociado || 0);
     }
     
     // Atualizar total aprovado
     const totalAprovado = document.getElementById('total-aprovado');
     if (totalAprovado) {
-        totalAprovado.textContent = 'R$ ' + formatarNumero(resumo.total_aprovado);
+        totalAprovado.textContent = 'R$ ' + formatarNumero(resumo.total_aprovado || 0);
     }
     
     // Renderizar cards de compradores
@@ -308,12 +308,15 @@ function renderizarResumo(resumo) {
         let menorEconomia = Infinity;
         
         resumo.compradores.forEach(comprador => {
-            if (comprador.economia_total > maiorEconomia) {
-                maiorEconomia = comprador.economia_total;
+            // Garantir que os valores sejam números
+            const economiaTotal = parseFloat(comprador.economia_total || 0);
+            
+            if (economiaTotal > maiorEconomia) {
+                maiorEconomia = economiaTotal;
                 melhorComprador = comprador;
             }
-            if (comprador.economia_total < menorEconomia) {
-                menorEconomia = comprador.economia_total;
+            if (economiaTotal < menorEconomia) {
+                menorEconomia = economiaTotal;
                 piorComprador = comprador;
             }
         });
@@ -321,18 +324,26 @@ function renderizarResumo(resumo) {
         // Renderizar card do melhor comprador
         const melhorCompradorElement = document.getElementById('melhor-comprador');
         if (melhorCompradorElement && melhorComprador) {
-            const economiaPercentualMelhor = melhorComprador.valor_total_inicial > 0 ? 
-                (melhorComprador.economia_total / melhorComprador.valor_total_inicial * 100) : 0;
+            // Garantir que os valores sejam números
+            const valorInicial = parseFloat(melhorComprador.valor_inicial_total || 0);
+            const economiaTotal = parseFloat(melhorComprador.economia_total || 0);
+            const valorFinal = parseFloat(melhorComprador.valor_final_total || 0);
+            const rodadas = parseInt(melhorComprador.total_rodadas || 0);
+            const registros = parseInt(melhorComprador.total_registros || 0);
+            
+            // Calcular economia percentual
+            const economiaPercentualMelhor = valorInicial > 0 ? 
+                (economiaTotal / valorInicial * 100) : 0;
 
             melhorCompradorElement.innerHTML = `
                 <div class="comprador-card melhor">
                     <div class="comprador-nome">
-                        ${melhorComprador.comprador_nome}
+                        ${melhorComprador.comprador_nome || 'Sem nome'}
                         <span class="comprador-badge melhor"><i class="fas fa-trophy"></i> Melhor Comprador</span>
                     </div>
                     <div class="comprador-metrica economia">
                         <span class="comprador-metrica-label">Economia Total:</span>
-                        <span class="comprador-metrica-valor">R$ ${formatarNumero(melhorComprador.economia_total)}</span>
+                        <span class="comprador-metrica-valor">R$ ${formatarNumero(economiaTotal)}</span>
                     </div>
                     <div class="comprador-metrica">
                         <span class="comprador-metrica-label">Economia (%):</span>
@@ -340,19 +351,19 @@ function renderizarResumo(resumo) {
                     </div>
                     <div class="comprador-metrica negociado">
                         <span class="comprador-metrica-label">Total Negociado:</span>
-                        <span class="comprador-metrica-valor">R$ ${formatarNumero(melhorComprador.valor_total_inicial)}</span>
+                        <span class="comprador-metrica-valor">R$ ${formatarNumero(valorInicial)}</span>
                     </div>
                     <div class="comprador-metrica aprovado">
                         <span class="comprador-metrica-label">Total Aprovado:</span>
-                        <span class="comprador-metrica-valor">R$ ${formatarNumero(melhorComprador.valor_total_final)}</span>
+                        <span class="comprador-metrica-valor">R$ ${formatarNumero(valorFinal)}</span>
                     </div>
                     <div class="comprador-metrica rodadas">
                         <span class="comprador-metrica-label">Total de Rodadas:</span>
-                        <span class="comprador-metrica-valor">${melhorComprador.total_rodadas}</span>
+                        <span class="comprador-metrica-valor">${rodadas}</span>
                     </div>
                     <div class="comprador-metrica">
                         <span class="comprador-metrica-label">Total de Registros:</span>
-                        <span class="comprador-metrica-valor">${melhorComprador.total_registros}</span>
+                        <span class="comprador-metrica-valor">${registros}</span>
                     </div>
                 </div>
             `;
@@ -361,18 +372,26 @@ function renderizarResumo(resumo) {
         // Renderizar card do pior comprador
         const piorCompradorElement = document.getElementById('pior-comprador');
         if (piorCompradorElement && piorComprador) {
-            const economiaPercentualPior = piorComprador.valor_total_inicial > 0 ? 
-                (piorComprador.economia_total / piorComprador.valor_total_inicial * 100) : 0;
+            // Garantir que os valores sejam números
+            const valorInicial = parseFloat(piorComprador.valor_inicial_total || 0);
+            const economiaTotal = parseFloat(piorComprador.economia_total || 0);
+            const valorFinal = parseFloat(piorComprador.valor_final_total || 0);
+            const rodadas = parseInt(piorComprador.total_rodadas || 0);
+            const registros = parseInt(piorComprador.total_registros || 0);
+            
+            // Calcular economia percentual
+            const economiaPercentualPior = valorInicial > 0 ? 
+                (economiaTotal / valorInicial * 100) : 0;
 
             piorCompradorElement.innerHTML = `
                 <div class="comprador-card pior">
                     <div class="comprador-nome">
-                        ${piorComprador.comprador_nome}
+                        ${piorComprador.comprador_nome || 'Sem nome'}
                         <span class="comprador-badge pior"><i class="fas fa-exclamation-triangle"></i> Pior Comprador</span>
                     </div>
                     <div class="comprador-metrica economia">
                         <span class="comprador-metrica-label">Economia Total:</span>
-                        <span class="comprador-metrica-valor">R$ ${formatarNumero(piorComprador.economia_total)}</span>
+                        <span class="comprador-metrica-valor">R$ ${formatarNumero(economiaTotal)}</span>
                     </div>
                     <div class="comprador-metrica">
                         <span class="comprador-metrica-label">Economia (%):</span>
@@ -380,19 +399,19 @@ function renderizarResumo(resumo) {
                     </div>
                     <div class="comprador-metrica negociado">
                         <span class="comprador-metrica-label">Total Negociado:</span>
-                        <span class="comprador-metrica-valor">R$ ${formatarNumero(piorComprador.valor_total_inicial)}</span>
+                        <span class="comprador-metrica-valor">R$ ${formatarNumero(valorInicial)}</span>
                     </div>
                     <div class="comprador-metrica aprovado">
                         <span class="comprador-metrica-label">Total Aprovado:</span>
-                        <span class="comprador-metrica-valor">R$ ${formatarNumero(piorComprador.valor_total_final)}</span>
+                        <span class="comprador-metrica-valor">R$ ${formatarNumero(valorFinal)}</span>
                     </div>
                     <div class="comprador-metrica rodadas">
                         <span class="comprador-metrica-label">Total de Rodadas:</span>
-                        <span class="comprador-metrica-valor">${piorComprador.total_rodadas}</span>
+                        <span class="comprador-metrica-valor">${rodadas}</span>
                     </div>
                     <div class="comprador-metrica">
                         <span class="comprador-metrica-label">Total de Registros:</span>
-                        <span class="comprador-metrica-valor">${piorComprador.total_registros}</span>
+                        <span class="comprador-metrica-valor">${registros}</span>
                     </div>
                 </div>
             `;
@@ -408,17 +427,25 @@ function renderizarResumo(resumo) {
                     return;
                 }
 
-                const economiaPercentual = comprador.valor_total_inicial > 0 ? 
-                    (comprador.economia_total / comprador.valor_total_inicial * 100) : 0;
+                // Garantir que os valores sejam números
+                const valorInicial = parseFloat(comprador.valor_inicial_total || 0);
+                const economiaTotal = parseFloat(comprador.economia_total || 0);
+                const valorFinal = parseFloat(comprador.valor_final_total || 0);
+                const rodadas = parseInt(comprador.total_rodadas || 0);
+                const registros = parseInt(comprador.total_registros || 0);
+                
+                // Calcular economia percentual
+                const economiaPercentual = valorInicial > 0 ? 
+                    (economiaTotal / valorInicial * 100) : 0;
 
                 html += `
                     <div class="comprador-card">
                         <div class="comprador-nome">
-                            ${comprador.comprador_nome}
+                            ${comprador.comprador_nome || 'Sem nome'}
                         </div>
                         <div class="comprador-metrica economia">
                             <span class="comprador-metrica-label">Economia Total:</span>
-                            <span class="comprador-metrica-valor">R$ ${formatarNumero(comprador.economia_total)}</span>
+                            <span class="comprador-metrica-valor">R$ ${formatarNumero(economiaTotal)}</span>
                         </div>
                         <div class="comprador-metrica">
                             <span class="comprador-metrica-label">Economia (%):</span>
@@ -426,19 +453,19 @@ function renderizarResumo(resumo) {
                         </div>
                         <div class="comprador-metrica negociado">
                             <span class="comprador-metrica-label">Total Negociado:</span>
-                            <span class="comprador-metrica-valor">R$ ${formatarNumero(comprador.valor_total_inicial)}</span>
+                            <span class="comprador-metrica-valor">R$ ${formatarNumero(valorInicial)}</span>
                         </div>
                         <div class="comprador-metrica aprovado">
                             <span class="comprador-metrica-label">Total Aprovado:</span>
-                            <span class="comprador-metrica-valor">R$ ${formatarNumero(comprador.valor_total_final)}</span>
+                            <span class="comprador-metrica-valor">R$ ${formatarNumero(valorFinal)}</span>
                         </div>
                         <div class="comprador-metrica rodadas">
                             <span class="comprador-metrica-label">Total de Rodadas:</span>
-                            <span class="comprador-metrica-valor">${comprador.total_rodadas}</span>
+                            <span class="comprador-metrica-valor">${rodadas}</span>
                         </div>
                         <div class="comprador-metrica">
                             <span class="comprador-metrica-label">Total de Registros:</span>
-                            <span class="comprador-metrica-valor">${comprador.total_registros}</span>
+                            <span class="comprador-metrica-valor">${registros}</span>
                         </div>
                     </div>
                 `;
@@ -482,8 +509,8 @@ async function verDetalhes(id) {
         // Exibir data de aprovação se existir
         const dataAprovacao = data.data_aprovacao ? formatarData(data.data_aprovacao) : 'Não aprovado';
         document.getElementById('sawing-data-aprovacao').textContent = dataAprovacao;
-        
-        // Formatar valores monetários
+            
+            // Formatar valores monetários
         const valorInicial = parseFloat(data.valor_total_inicial || 0);
         const valorFinal = parseFloat(data.valor_total_final || 0);
         const economia = parseFloat(data.economia || 0);
@@ -591,10 +618,10 @@ function renderizarProdutos(produtos) {
                 <td>${produto.quantidade}</td>
                 <td>R$ ${formatarNumero(produto.valor_unitario_inicial)}</td>
                 <td>R$ ${formatarNumero(produto.valor_unitario_final)}</td>
-                <td class="${economiaClass}">
+            <td class="${economiaClass}">
                     R$ ${formatarNumero(economia)}
-                    <span class="economia-percentual">(${economiaPercentual.toFixed(2)}%)</span>
-                </td>
+                <span class="economia-percentual">(${economiaPercentual.toFixed(2)}%)</span>
+            </td>
                 <td>${produto.fornecedor_nome}</td>
             </tr>
         `;
@@ -611,6 +638,12 @@ function renderizarProdutos(produtos) {
 
 // Função auxiliar para formatar números
 function formatarNumero(valor) {
+    // Verificar se o valor é nulo, indefinido ou não é um número
+    if (valor === null || valor === undefined || isNaN(valor)) {
+        return '0,00';
+    }
+    
+    // Converter para número e formatar
     return parseFloat(valor).toFixed(2).replace('.', ',');
 }
 
