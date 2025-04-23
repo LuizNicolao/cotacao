@@ -1,0 +1,19 @@
+# Environment variables
+.env
+
+# Docker volumes
+mysql_data/
+
+# IDE files
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Dependencies
+vendor/
+node_modules/
+
+# Cache
+*.cache 
