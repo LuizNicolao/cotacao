@@ -1140,8 +1140,7 @@ if ($dados['status'] === 'aprovado') {
                 $stmt = $conn->prepare("
                     INSERT INTO sawing_itens (
                         sawing_id, 
-                        item_id, 
-                        descricao, 
+                        item_id,  
                         valor_unitario_inicial, 
                         valor_unitario_final, 
                         economia, 

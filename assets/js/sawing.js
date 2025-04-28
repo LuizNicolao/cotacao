@@ -495,7 +495,7 @@ async function verDetalhes(id) {
         
         if (data.error) {
             throw new Error(data.error);
-        }
+            }
 
         // Verificar se os dados do sawing existem
         if (!data) {
@@ -544,7 +544,7 @@ async function verDetalhes(id) {
         }
         
         document.getElementById('sawing-rodadas').textContent = data.rodadas || '1';
-        
+            
         // Formatar status com classe de cor
         const statusElement = document.getElementById('sawing-status');
         const status = data.status || 'Pendente';
@@ -561,7 +561,7 @@ async function verDetalhes(id) {
         }
         
         document.getElementById('sawing-observacoes').textContent = data.observacoes || 'Nenhuma observação';
-
+            
         // Renderizar os produtos
         if (data.produtos && data.produtos.length > 0) {
             renderizarProdutos(data.produtos.map(produto => ({
