@@ -58,9 +58,9 @@ try {
     if ($table_exists) {
         // Calcular economia total
         $query = "SELECT 
-                    SUM(valor_inicial - valor_final) as economia_total,
-                    SUM(valor_inicial) as total_negociado,
-                    SUM(valor_final) as total_aprovado,
+                    SUM(valor_total_inicial - valor_total_final) as economia_total,
+                    SUM(valor_total_inicial) as total_negociado,
+                    SUM(valor_total_final) as total_aprovado,
                     SUM(rodadas) as total_rodadas
                   FROM sawing";
         $result = $conn->query($query);
