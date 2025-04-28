@@ -13,17 +13,14 @@ $conn = conectarDB();
 
 // Modificar a consulta para buscar todas as cotações, não apenas as que estão aguardando aprovação
 $query = "SELECT 
-    c.id,
-    c.data_criacao,
-    c.status,
-    c.usuario_id,
+    c.*, 
     u.nome as usuario_nome,
     COUNT(i.id) as total_itens,
-    SUM(i.quantidade * (i.valor_unitario + (i.valor_unitario * i.difal / 100))) + COALESCE(SUM(i.frete), 0) as valor_total
+    SUM(i.quantidade * (i.valor_unitario + (i.valor_unitario * i.difal / 100))) + COALESCE(i.frete, 0) as valor_total
 FROM cotacoes c
 JOIN usuarios u ON c.usuario_id = u.id
 LEFT JOIN itens_cotacao i ON c.id = i.cotacao_id
-GROUP BY c.id, c.data_criacao, c.status, c.usuario_id, u.nome
+GROUP BY c.id
 ORDER BY 
     CASE 
         WHEN c.status = 'aguardando_aprovacao' THEN 1

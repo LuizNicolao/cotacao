@@ -388,32 +388,32 @@ function renderizarResumo(resumo) {
                     <div class="comprador-nome">
                         ${piorComprador.comprador_nome || 'Sem nome'}
                         <span class="comprador-badge pior"><i class="fas fa-exclamation-triangle"></i> Pior Comprador</span>
-                    </div>
+                </div>
                     <div class="comprador-metrica economia">
                         <span class="comprador-metrica-label">Economia Total:</span>
                         <span class="comprador-metrica-valor">R$ ${formatarNumero(economiaTotal)}</span>
-                    </div>
+                                </div>
                     <div class="comprador-metrica">
                         <span class="comprador-metrica-label">Economia (%):</span>
                         <span class="comprador-metrica-valor">${economiaPercentualPior.toFixed(2)}%</span>
-                    </div>
+                            </div>
                     <div class="comprador-metrica negociado">
                         <span class="comprador-metrica-label">Total Negociado:</span>
                         <span class="comprador-metrica-valor">R$ ${formatarNumero(valorInicial)}</span>
-                    </div>
+                        </div>
                     <div class="comprador-metrica aprovado">
                         <span class="comprador-metrica-label">Total Aprovado:</span>
                         <span class="comprador-metrica-valor">R$ ${formatarNumero(valorFinal)}</span>
-                    </div>
+                                </div>
                     <div class="comprador-metrica rodadas">
                         <span class="comprador-metrica-label">Total de Rodadas:</span>
                         <span class="comprador-metrica-valor">${rodadas}</span>
-                    </div>
+                            </div>
                     <div class="comprador-metrica">
                         <span class="comprador-metrica-label">Total de Registros:</span>
                         <span class="comprador-metrica-valor">${registros}</span>
-                    </div>
-                </div>
+                        </div>
+                                </div>
             `;
         }
 
@@ -442,7 +442,7 @@ function renderizarResumo(resumo) {
                     <div class="comprador-card">
                         <div class="comprador-nome">
                             ${comprador.comprador_nome || 'Sem nome'}
-                        </div>
+                            </div>
                         <div class="comprador-metrica economia">
                             <span class="comprador-metrica-label">Economia Total:</span>
                             <span class="comprador-metrica-valor">R$ ${formatarNumero(economiaTotal)}</span>
@@ -450,11 +450,11 @@ function renderizarResumo(resumo) {
                         <div class="comprador-metrica">
                             <span class="comprador-metrica-label">Economia (%):</span>
                             <span class="comprador-metrica-valor">${economiaPercentual.toFixed(2)}%</span>
-                        </div>
+                                </div>
                         <div class="comprador-metrica negociado">
                             <span class="comprador-metrica-label">Total Negociado:</span>
                             <span class="comprador-metrica-valor">R$ ${formatarNumero(valorInicial)}</span>
-                        </div>
+                            </div>
                         <div class="comprador-metrica aprovado">
                             <span class="comprador-metrica-label">Total Aprovado:</span>
                             <span class="comprador-metrica-valor">R$ ${formatarNumero(valorFinal)}</span>
@@ -462,13 +462,13 @@ function renderizarResumo(resumo) {
                         <div class="comprador-metrica rodadas">
                             <span class="comprador-metrica-label">Total de Rodadas:</span>
                             <span class="comprador-metrica-valor">${rodadas}</span>
-                        </div>
+                    </div>
                         <div class="comprador-metrica">
                             <span class="comprador-metrica-label">Total de Registros:</span>
                             <span class="comprador-metrica-valor">${registros}</span>
-                        </div>
-                    </div>
-                `;
+                </div>
+            </div>
+        `;
             });
             compradoresCards.innerHTML = html;
         }
