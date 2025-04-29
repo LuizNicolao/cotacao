@@ -74,7 +74,7 @@
 
     <div class="form-group anexar-cotacao">
       <label for="arquivo-cotacao"><i class="fas fa-paperclip"></i> Anexar Cotação:</label>
-      <input type="file" class="arquivo-cotacao" accept=".pdf,.jpg,.jpeg,.png" required>
+      <input type="file" class="arquivo-cotacao" accept=".pdf,.jpg,.jpeg,.png">
       <small>Formatos aceitos: PDF, JPG, JPEG, PNG</small>
     </div>
 
