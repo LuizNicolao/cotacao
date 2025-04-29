@@ -27,7 +27,12 @@ WORKDIR /var/www/html
 # Copiar os arquivos da aplicação
 COPY . /var/www/html/
 
-# Definir permissões corretas
+# Criar e configurar diretório de uploads
+RUN mkdir -p /var/www/html/uploads
+RUN chown -R www-data:www-data /var/www/html/uploads \
+    && chmod -R 777 /var/www/html/uploads
+
+# Definir permissões gerais
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
 
