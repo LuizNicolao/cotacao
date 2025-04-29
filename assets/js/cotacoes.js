@@ -1052,13 +1052,16 @@ function editarCotacao(cotacaoId) {
 
             if (data.status === 'renegociacao' && data.motivo_renegociacao) {
                 const formHeader = document.querySelector('.form-header');
-                const motivoRenegociacao = document.createElement('div');
-                motivoRenegociacao.className = 'motivo-renegociacao-info';
-                motivoRenegociacao.innerHTML = `
-                    <h4>Motivo da Renegociação:</h4>
-                    <div class="motivo-texto">${data.motivo_renegociacao}</div>
-                `;
-                formHeader.parentNode.insertBefore(motivoRenegociacao, formHeader.nextSibling);
+                // Check if the renegotiation reason has already been added
+                if (!document.querySelector('.motivo-renegociacao-info')) {
+                    const motivoRenegociacao = document.createElement('div');
+                    motivoRenegociacao.className = 'motivo-renegociacao-info';
+                    motivoRenegociacao.innerHTML = `
+                        <h4>Motivo da Renegociação:</h4>
+                        <div class="motivo-texto">${data.motivo_renegociacao}</div>
+                    `;
+                    formHeader.parentNode.insertBefore(motivoRenegociacao, formHeader.nextSibling);
+                }
             }
 
             const itensPorFornecedor = {};
@@ -1460,8 +1463,24 @@ function renderizarVisualizacaoPorFornecedorModal(data) {
                             const isMenorValor = valorUnitario === menorValor && valorUnitario > 0;
                             const melhorPrecoClass = isMenorValor ? 'melhor-preco' : '';
                             
+                            // Verificar se o produto está marcado para renegociação
+                            const isRenegociacao = data.produtos_renegociar && data.produtos_renegociar.some(p => {
+                                return (
+                                    (String(p.produto_id) === String(item.produto_id) && 
+                                     p.fornecedor_nome === item.fornecedor_nome) ||
+                                    (String(p.produto_id) === String(item.produto_codigo) && 
+                                     p.fornecedor_nome === item.fornecedor_nome)
+                                );
+                            });
+                            
+                            // Adicionar classe de renegociação se necessário
+                            const renegociacaoClass = isRenegociacao ? 'produto-renegociar' : '';
+                            
+                            // Combinar as classes
+                            const classes = [melhorPrecoClass, renegociacaoClass].filter(Boolean).join(' ');
+                            
                             return `
-                                <tr class="${melhorPrecoClass}" data-fornecedor="${item.fornecedor}" data-produto="${item.produto_id}"
+                                <tr class="${classes}" data-fornecedor="${item.fornecedor}" data-produto="${item.produto_id}"
                                     data-fornecedor-nome="${item.fornecedor_nome}" data-produto-nome="${produtoNome}">
                                     <td>${produtoNome}</td>
                                     <td>${item.quantidade}</td>
@@ -1627,15 +1646,37 @@ function renderizarVisualizacaoPorProdutoModal(data) {
                         </tr>
                     </thead>
                     <tbody>
-                        ${itens.map(item => `
-                            <tr class="${item === melhorPreco ? 'melhor-preco' : ''}">
-                                <td>${item.fornecedor_nome}</td>
-                                <td>R$ ${formatarNumero(item.valor_unitario || 0)}</td>
-                                <td>R$ ${formatarNumero((item.quantidade || 0) * (item.valor_unitario || 0))}</td>
-                                <td>${item.prazo_pagamento || 'Não informado'}</td>
-                                <td>${item.prazo_entrega || 'Não informado'}</td>
-                            </tr>
-                        `).join('')}
+                        ${itens.map(item => {
+                            // Verificar se é o melhor preço
+                            const isMelhorPreco = item === melhorPreco;
+                            const melhorPrecoClass = isMelhorPreco ? 'melhor-preco' : '';
+                            
+                            // Verificar se o produto está marcado para renegociação
+                            const isRenegociacao = data.produtos_renegociar && data.produtos_renegociar.some(p => {
+                                return (
+                                    (String(p.produto_id) === String(item.produto_id) && 
+                                     p.fornecedor_nome === item.fornecedor_nome) ||
+                                    (String(p.produto_id) === String(item.produto_codigo) && 
+                                     p.fornecedor_nome === item.fornecedor_nome)
+                                );
+                            });
+                            
+                            // Adicionar classe de renegociação se necessário
+                            const renegociacaoClass = isRenegociacao ? 'produto-renegociar' : '';
+                            
+                            // Combinar as classes
+                            const classes = [melhorPrecoClass, renegociacaoClass].filter(Boolean).join(' ');
+                            
+                            return `
+                                <tr class="${classes}">
+                                    <td>${item.fornecedor_nome}</td>
+                                    <td>R$ ${formatarNumero(item.valor_unitario || 0)}</td>
+                                    <td>R$ ${formatarNumero((item.quantidade || 0) * (item.valor_unitario || 0))}</td>
+                                    <td>${item.prazo_pagamento || 'Não informado'}</td>
+                                    <td>${item.prazo_entrega || 'Não informado'}</td>
+                                </tr>
+                            `;
+                        }).join('')}
                     </tbody>
                 </table>
             </div>
@@ -1713,49 +1754,47 @@ function renderizarVisualizacaoComparativoModal(data) {
     // Gerar linhas da tabela
     let linhasHTML = '';
     produtosArray.forEach(produto => {
-        let linha = `<tr><td>${produto}</td>`;
-        
-        // Adicionar quantidade
-        linha += `<td>${precos[produto].quantidade || 0} ${data.itens.find(i => i.produto_nome === produto)?.produto_unidade || data.itens.find(i => i.produto_nome === produto)?.unidade || 'UN'}</td>`;
-        
-        // Adicionar preços de cada fornecedor
-        fornecedoresArray.forEach(fornecedor => {
-            const temPreco = precos[produto].fornecedores[fornecedor];
-            const valor = temPreco ? precos[produto].fornecedores[fornecedor].valor : 0;
-            const melhorPreco = valor > 0 && valor === melhoresPrecos[produto];
-            const classePreco = melhorPreco ? 'melhor-preco' : '';
-            
-            // Adicionar atributos data para filtragem
-            const fornecedorId = temPreco ? precos[produto].fornecedores[fornecedor].fornecedor_id : '';
-            const produtoId = temPreco ? precos[produto].fornecedores[fornecedor].produto_id : '';
-            
-            linha += `<td class="${classePreco} preco" data-fornecedor="${fornecedorId}" data-produto="${produtoId}">${temPreco ? 'R$ ' + formatarNumero(valor) : '-'}</td>`;
+        // Verificar se o produto está marcado para renegociação
+        const isRenegociacao = data.produtos_renegociar && data.produtos_renegociar.some(p => {
+            return (
+                (String(p.produto_id) === String(precos[produto].fornecedores[Object.keys(precos[produto].fornecedores)[0]].produto_id) && 
+                 p.fornecedor_nome === Object.keys(precos[produto].fornecedores)[0]) ||
+                (String(p.produto_id) === String(precos[produto].fornecedores[Object.keys(precos[produto].fornecedores)[0]].produto_id) && 
+                 p.fornecedor_nome === Object.keys(precos[produto].fornecedores)[0])
+            );
         });
         
-        linha += '</tr>';
-        linhasHTML += linha;
+        // Adicionar classe de renegociação se necessário
+        const renegociacaoClass = isRenegociacao ? 'produto-renegociar' : '';
+        
+        linhasHTML += `<tr class="${renegociacaoClass}">`;
+        linhasHTML += `<td>${produto}</td>`;
+        linhasHTML += `<td>${precos[produto].quantidade || 0}</td>`;
+        
+        fornecedoresArray.forEach(fornecedor => {
+            const dados = precos[produto].fornecedores[fornecedor];
+            const valor = dados ? dados.valor : 0;
+            const isMelhorPreco = valor === melhoresPrecos[produto] && valor > 0;
+            
+            linhasHTML += `<td class="${isMelhorPreco ? 'melhor-preco' : ''}">${valor > 0 ? 'R$ ' + formatarNumero(valor) : '-'}</td>`;
+        });
+        
+        linhasHTML += '</tr>';
     });
     
-    // Inserir conteúdo no modal
-    conteudoAnaliseComparativoElement.innerHTML = `
-        <h4>Tabela Comparativa de Preços</h4>
-        <div class="tabela-comparativa-container">
-            <table class="tabela-comparativa">
-                <thead>
-                    <tr>${cabecalhoHTML}</tr>
-                </thead>
-                <tbody>
-                    ${linhasHTML}
-                </tbody>
-            </table>
-        </div>
-        <div class="legenda-comparativo">
-            <div class="legenda-item">
-                <span class="legenda-cor melhor-preco"></span>
-                <span class="legenda-texto">Melhor preço</span>
-            </div>
-        </div>
+    // Montar tabela completa
+    const tabelaHTML = `
+        <table class="tabela-comparativa">
+            <thead>
+                <tr>${cabecalhoHTML}</tr>
+            </thead>
+            <tbody>
+                ${linhasHTML}
+            </tbody>
+        </table>
     `;
+    
+    conteudoAnaliseComparativoElement.innerHTML = tabelaHTML;
 }
 
 function renderizarComparativoVersoes(versaoAntiga, versaoAtual) {
