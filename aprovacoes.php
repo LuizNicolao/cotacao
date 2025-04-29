@@ -16,11 +16,11 @@ $query = "SELECT
     c.*, 
     u.nome as usuario_nome,
     COUNT(i.id) as total_itens,
-    SUM(i.quantidade * (i.valor_unitario + (i.valor_unitario * i.difal / 100))) + COALESCE(i.frete, 0) as valor_total
+    SUM(i.quantidade * (i.valor_unitario + (i.valor_unitario * i.difal / 100))) + SUM(COALESCE(i.frete, 0)) as valor_total
 FROM cotacoes c
 JOIN usuarios u ON c.usuario_id = u.id
 LEFT JOIN itens_cotacao i ON c.id = i.cotacao_id
-GROUP BY c.id
+GROUP BY c.id, c.usuario_id, c.data_criacao, c.status, c.prazo_pagamento, c.motivo_aprovacao, c.motivo_rejeicao, c.data_aprovacao, u.nome
 ORDER BY 
     CASE 
         WHEN c.status = 'aguardando_aprovacao' THEN 1
