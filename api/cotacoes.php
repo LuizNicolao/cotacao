@@ -3,6 +3,19 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 0); // Não exibir erros diretamente
 
+// Verificar e configurar diretório de uploads
+$uploadDir = __DIR__ . '/../uploads/';
+if (!is_dir($uploadDir)) {
+    mkdir($uploadDir, 0777, true);
+}
+
+if (!is_writable($uploadDir)) {
+    chmod($uploadDir, 0777);
+    // Verificar novamente após a tentativa de correção
+    if (!is_writable($uploadDir)) {
+        error_log("ERRO: Diretório de uploads não tem permissões de escrita: " . $uploadDir);
+    }
+}
 
 // Limpar qualquer saída anterior
 while (ob_get_level()) {

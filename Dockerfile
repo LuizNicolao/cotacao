@@ -36,5 +36,17 @@ RUN chown -R www-data:www-data /var/www/html/uploads \
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
 
+# Adicionar script de verificação de permissões
+RUN echo '#!/bin/bash\n\
+if [ ! -d "/var/www/html/uploads" ]; then\n\
+    mkdir -p /var/www/html/uploads\n\
+    chown -R www-data:www-data /var/www/html/uploads\n\
+    chmod -R 777 /var/www/html/uploads\n\
+fi' > /usr/local/bin/check-permissions.sh \
+    && chmod +x /usr/local/bin/check-permissions.sh
+
 # Expor a porta 80
-EXPOSE 80 
+EXPOSE 80
+
+# Adicionar comando para verificar permissões ao iniciar o container
+CMD ["/bin/bash", "-c", "/usr/local/bin/check-permissions.sh && apache2-foreground"]
