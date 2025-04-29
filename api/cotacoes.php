@@ -1154,7 +1154,6 @@ if ($dados['status'] === 'aprovado') {
                     INSERT INTO sawing_itens (
                         sawing_id, 
                         item_id, 
-                        descricao, 
                         valor_unitario_inicial, 
                         valor_unitario_final, 
                         economia, 
