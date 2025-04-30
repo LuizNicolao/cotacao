@@ -208,10 +208,16 @@ function renderizarItensCotacao(itens) {
         container.innerHTML = '<p>Nenhum item disponível para exibição</p>';
         return;
     }
+
+    // Verificar se a cotação está aprovada
+    const cotacaoAprovada = itens.some(item => item.aprovado === 1);
+    
+    // Se a cotação estiver aprovada, filtrar apenas os itens aprovados
+    const itensParaMostrar = cotacaoAprovada ? itens.filter(item => item.aprovado === 1) : itens;
     
     console.log("Agrupando itens por fornecedor");
     // Agrupar itens por fornecedor
-    const itensPorFornecedor = itens.reduce((acc, item) => {
+    const itensPorFornecedor = itensParaMostrar.reduce((acc, item) => {
         if (!acc[item.fornecedor_nome]) {
             acc[item.fornecedor_nome] = [];
         }

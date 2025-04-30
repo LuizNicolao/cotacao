@@ -884,37 +884,39 @@ if ($dados['status'] === 'aprovado') {
         error_log("Erro ao remover itens de renegociação: " . $e->getMessage());
     }
     
-    // Verificar se a coluna data_aprovacao existe
-    try {
-        $stmt = $conn->prepare("UPDATE cotacoes SET status = ?, motivo_aprovacao = ?, data_aprovacao = NOW() WHERE id = ?");
-        $stmt->execute([$dados['status'], $dados['motivo_aprovacao'], $dados['id']]);
-    } catch (Exception $e) {
-        $stmt = $conn->prepare("UPDATE cotacoes SET status = ?, motivo_aprovacao = ? WHERE id = ?");
-        $stmt->execute([$dados['status'], $dados['motivo_aprovacao'], $dados['id']]);
-    }
-    
     // Verificar se há itens aprovados específicos
     if (isset($dados['itens_aprovados']) && is_array($dados['itens_aprovados']) && count($dados['itens_aprovados']) > 0) {
         try {
+            // Primeiro, marcar todos os itens como não aprovados
             $stmt = $conn->prepare("UPDATE itens_cotacao SET aprovado = 0 WHERE cotacao_id = ?");
             $stmt->execute([$dados['id']]);
             
+            // Depois, marcar apenas os itens selecionados como aprovados
             foreach ($dados['itens_aprovados'] as $item) {
                 $stmt = $conn->prepare("
                     UPDATE itens_cotacao 
                     SET aprovado = 1 
                     WHERE cotacao_id = ? 
-                    AND produto_codigo = ?
+                    AND produto_nome = ?
                     AND fornecedor_nome = ?
                 ");
                 $stmt->execute([
                     $dados['id'],
-                    $item['produto_id'],
+                    $item['produto_nome'],
                     $item['fornecedor_nome']
                 ]);
             }
+
+            // Atualizar o status da cotação para aprovado
+            $stmt = $conn->prepare("UPDATE cotacoes SET status = 'aprovado', data_aprovacao = NOW() WHERE id = ?");
+            $stmt->execute([$dados['id']]);
         } catch (Exception $e) {
-            $conn->exec("ALTER TABLE itens_cotacao ADD COLUMN aprovado TINYINT(1) DEFAULT 0");
+            // Se a coluna 'aprovado' não existir, criá-la
+            if (!columnExists($conn, 'itens_cotacao', 'aprovado')) {
+                $conn->exec("ALTER TABLE itens_cotacao ADD COLUMN aprovado TINYINT(1) DEFAULT 0");
+            }
+            
+            // Tentar novamente após criar a coluna
             $stmt = $conn->prepare("UPDATE itens_cotacao SET aprovado = 0 WHERE cotacao_id = ?");
             $stmt->execute([$dados['id']]);
             
@@ -923,12 +925,12 @@ if ($dados['status'] === 'aprovado') {
                     UPDATE itens_cotacao 
                     SET aprovado = 1 
                     WHERE cotacao_id = ? 
-                    AND produto_codigo = ?
+                    AND produto_nome = ?
                     AND fornecedor_nome = ?
                 ");
                 $stmt->execute([
                     $dados['id'],
-                    $item['produto_id'],
+                    $item['produto_nome'],
                     $item['fornecedor_nome']
                 ]);
             }
@@ -1530,6 +1532,17 @@ function salvarHistoricoCotacao($conn, $cotacaoId, $usuarioId, $acao, $motivo = 
         return true;
     } catch (Exception $e) {
         error_log("Erro ao salvar histórico de cotação: " . $e->getMessage());
+        return false;
+    }
+}
+
+// Função auxiliar para verificar se uma coluna existe
+function columnExists($conn, $table, $column) {
+    try {
+        $stmt = $conn->prepare("SHOW COLUMNS FROM {$table} LIKE ?");
+        $stmt->execute([$column]);
+        return $stmt->rowCount() > 0;
+    } catch (Exception $e) {
         return false;
     }
 }

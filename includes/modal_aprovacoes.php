@@ -1264,11 +1264,7 @@ function alternarVisualizacao(viewId) {
     
     // Adicionar classe 'active' ao botão correspondente
     const btnElement = document.getElementById('btn-' + viewId);
-    if (btnElement) {
-        btnElement.classList.add('active');
-    } else {
-        console.error('Botão não encontrado:', 'btn-' + viewId);
-    }
+    if (btnElement) btnElement.classList.add('active');
     
     // Verificar se a alternância foi bem-sucedida
     setTimeout(() => {
@@ -1990,6 +1986,7 @@ function prepararItensParaAprovacao() {
     // Adicionar event listeners para os checkboxes
     document.querySelectorAll('#lista-itens-aprovacao input[type="checkbox"]').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
+            console.log('Checkbox alterado:', this.checked, this.dataset);
             atualizarItensSelecionadosManualmente();
         });
     });
@@ -2000,15 +1997,21 @@ function prepararItensParaAprovacao() {
 function atualizarItensSelecionadosManualmente() {
     itensSelecionadosManualmente = [];
     
-    document.querySelectorAll('#lista-itens-aprovacao input[type="checkbox"]:checked').forEach(checkbox => {
-        itensSelecionadosManualmente.push({
+    const checkboxes = document.querySelectorAll('#lista-itens-aprovacao input[type="checkbox"]:checked');
+    console.log('Total de checkboxes selecionados:', checkboxes.length);
+    
+    checkboxes.forEach(checkbox => {
+        const item = {
             produto_id: checkbox.dataset.produtoId,
             fornecedor_nome: checkbox.dataset.fornecedor,
             valor_unitario: checkbox.dataset.valor,
             produto_nome: checkbox.dataset.produtoNome
-        });
+        };
+        console.log('Adicionando item:', item);
+        itensSelecionadosManualmente.push(item);
     });
     
+    console.log('Total de itens selecionados manualmente:', itensSelecionadosManualmente.length);
     console.log('Itens selecionados manualmente:', itensSelecionadosManualmente);
 }
 
@@ -2031,16 +2034,19 @@ function confirmarAprovacao() {
     
     switch (tipoAprovacao) {
         case 'manual':
-            itensAprovados = [...itensSelecionadosManualmente]; // Usar spread para criar uma cópia
+            // Atualizar a lista de itens selecionados manualmente antes de usar
+            atualizarItensSelecionadosManualmente();
+            itensAprovados = [...itensSelecionadosManualmente];
+            console.log('Itens a serem aprovados (manual):', itensAprovados);
             break;
         case 'melhor-preco':
-            itensAprovados = [...itensMelhorPreco]; // Usar spread para criar uma cópia
+            itensAprovados = [...itensMelhorPreco];
             break;
         case 'melhor-prazo-entrega':
-            itensAprovados = [...itensMelhorPrazoEntrega]; // Usar spread para criar uma cópia
+            itensAprovados = [...itensMelhorPrazoEntrega];
             break;
         case 'melhor-prazo-pagamento':
-            itensAprovados = [...itensMelhorPrazoPagamento]; // Usar spread para criar uma cópia
+            itensAprovados = [...itensMelhorPrazoPagamento];
             break;
     }
    
@@ -2049,7 +2055,8 @@ function confirmarAprovacao() {
     const itemsMap = new Map();
     
     for (const item of itensAprovados) {
-        const key = `${item.produto_id}_${item.fornecedor_nome}`;
+        // Criar uma chave única baseada no produto e fornecedor
+        const key = `${item.produto_nome}_${item.fornecedor_nome}`;
         if (!itemsMap.has(key)) {
             itemsMap.set(key, true);
             itensUnicos.push(item);
@@ -2059,6 +2066,9 @@ function confirmarAprovacao() {
     // Usar apenas itens únicos
     itensAprovados = itensUnicos;
     
+    console.log('Total de itens a serem aprovados:', itensAprovados.length);
+    console.log('Itens a serem aprovados:', itensAprovados);
+    
     // Verificar se há itens selecionados
     if (itensAprovados.length === 0) {
         alert('Por favor, selecione pelo menos um item para aprovação.');
@@ -2066,7 +2076,7 @@ function confirmarAprovacao() {
     }
    
     // Confirmar a aprovação
-    if (confirm(`Tem certeza que deseja aprovar ${itensAprovados.length} itens?`)) {
+    if (confirm(`Tem certeza que deseja aprovar ${itensAprovados.length} item${itensAprovados.length > 1 ? 's' : ''}?`)) {
         const payload = {
             id: currentCotacaoId,
             status: 'aprovado',
