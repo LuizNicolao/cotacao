@@ -102,12 +102,12 @@
 
 /* Estilos para variações e destaques */
 .variacao-positiva {
-    color: #2ecc71;
+    color: #dc3545; /* Vermelho para aumento de preço */
     font-weight: bold;
 }
 
 .variacao-negativa {
-    color: #e74c3c;
+    color: #28a745; /* Verde para redução de preço */
     font-weight: bold;
 }
 
