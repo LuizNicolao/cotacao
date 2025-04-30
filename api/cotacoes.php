@@ -1148,7 +1148,7 @@ exit;
                             // Atualizar ou inserir produtos
                             foreach ($dados['fornecedores'] as $fornecedor) {
                                 foreach ($fornecedor['produtos'] as $produto) {
-                                    $key = $produto['nome'] . '_' . $fornecedor['fornecedor_nome'];
+                                    $key = $produto['codigo'] . '_' . $fornecedor['fornecedor_nome'];
                                     
                                     // Verificar se o item já existe
                                     $stmt = $conn->prepare("
@@ -1168,7 +1168,8 @@ exit;
                                                 prazo_entrega = ?,
                                                 frete = ?,
                                                 difal = ?,
-                                                prazo_pagamento = ?
+                                                prazo_pagamento = ?,
+                                                ultimo_preco = ?
                                             WHERE cotacao_id = ? AND produto_nome = ? AND fornecedor_nome = ?
                                         ");
                                         
@@ -1180,6 +1181,7 @@ exit;
                                             $fornecedor['frete'] ?? 0,
                                             $fornecedor['difal'] ?? 0,
                                             $fornecedor['prazo_pagamento'] ?? null,
+                                            $valoresAnteriores[$key]['ultimo_preco'] ?? $produto['valor_unitario'],
                                             $dados['id'],
                                             $produto['nome'],
                                             $fornecedor['fornecedor_nome']
