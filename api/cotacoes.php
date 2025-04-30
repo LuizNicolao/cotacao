@@ -268,98 +268,45 @@ try {
                             }
                         }
                         
-                        foreach ($dados['fornecedores'] as $index => $fornecedor) {
-                            // Processar arquivo de cotação, se existir
-                            $arquivo_cotacao = null;
-                            $arquivo_key = "arquivo_cotacao_{$index}";
-                            
-                            if (isset($_FILES[$arquivo_key]) && $_FILES[$arquivo_key]['error'] === UPLOAD_ERR_OK) {
-                                $tempFile = $_FILES[$arquivo_key]['tmp_name'];
-                                $originalName = $_FILES[$arquivo_key]['name'];
-                                $fileExt = pathinfo($originalName, PATHINFO_EXTENSION);
-                                $newFileName = 'cotacao_' . $cotacao_id . '_fornecedor_' . $index . '_' . time() . '.' . $fileExt;
-                                $targetFile = $uploadDir . $newFileName;
-                                
-                                if (move_uploaded_file($tempFile, $targetFile)) {
-                                    $arquivo_cotacao = $newFileName;
-                                } else {
-                                    throw new Exception('Erro ao salvar o arquivo de cotação');
-                                }
-                            }
-                            
+                        // Buscar o maior produto_id existente para esta cotação
+                        $stmt = $conn->prepare("SELECT MAX(produto_id) as max_id FROM itens_cotacao WHERE cotacao_id = ?");
+                        $stmt->execute([$cotacao_id]);
+                        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                        $produto_id = ($result['max_id'] ?? 0) + 1;
+
+                        // Inserir novos itens
+                        $stmt = $conn->prepare("
+                            INSERT INTO itens_cotacao (
+                                cotacao_id, 
+                                produto_id,
+                                produto_nome, 
+                                fornecedor_nome, 
+                                quantidade, 
+                                valor_unitario, 
+                                valor_total, 
+                                prazo_entrega,
+                                frete,
+                                difal,
+                                prazo_pagamento,
+                                primeiro_valor
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ");
+                        
+                        foreach ($dados['fornecedores'] as $fornecedor) {
                             foreach ($fornecedor['produtos'] as $produto) {
-                                // Buscar o último produto_id para gerar o próximo ID
-                                $stmt = $conn->prepare("SELECT MAX(produto_id) FROM itens_cotacao");
-                                $stmt->execute();
-                                $ultimoProdutoId = $stmt->fetchColumn();
-                                
-                                // Gerar o próximo produto_id
-                                $produto_id = $ultimoProdutoId ? $ultimoProdutoId + 1 : 1;
-                                
-                                // Determinar valores para campos de histórico
-                                $valorUnitario = $produto['valor_unitario'];
-                                $key = $produto_id . '_' . $fornecedor['fornecedor_nome'];
-                                
-                                // Determinar o primeiro_valor (preservar se existir)
-                                $primeiroValor = $isPut && isset($valoresOriginais[$key]) 
-                                    ? $valoresOriginais[$key]['primeiro_valor']  // Preservar o valor original
-                                    : $valorUnitario;                            // Novo valor para criação
-                                
-                                // Determinar o último preço
-                                $ultimoPreco = $isPut && isset($valoresOriginais[$key]) 
-                                    ? $valoresOriginais[$key]['ultimo_preco']    // Último preço registrado
-                                    : null;                                      // NULL para novos itens
-                                
-                                // Determinar número de rodadas
-                                $rodadas = 0;
-                                if ($isPut && isset($valoresOriginais[$key])) {
-                                    $rodadas = $valoresOriginais[$key]['rodadas'];
-                                    // Incrementar rodadas se o valor mudou
-                                    if ($valorUnitario != $valoresOriginais[$key]['ultimo_preco']) {
-                                        $rodadas++;
-                                    }
-                                }
-                                
-                                // Inserir o item de cotação com o produto_id gerado manualmente
-                                $stmt = $conn->prepare("
-                                    INSERT INTO itens_cotacao (
-                                        cotacao_id,
-                                        fornecedor_nome,
-                                        produto_id,
-                                        produto_nome,
-                                        produto_codigo,
-                                        produto_unidade,
-                                        quantidade,
-                                        valor_unitario,
-                                        primeiro_valor,
-                                        ultimo_preco,
-                                        rodadas,
-                                        prazo_pagamento,
-                                        prazo_entrega,
-                                        frete,
-                                        difal,
-                                        arquivo_cotacao,
-                                        edicoes_valor
-                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                                ");
-                                
                                 $stmt->execute([
                                     $cotacao_id,
-                                    $fornecedor['fornecedor_nome'],
-                                    $produto_id,
+                                    $produto_id++,
                                     $produto['nome'],
-                                    $produto['codigo'],
-                                    $produto['unidade'],
+                                    $fornecedor['fornecedor_nome'],
                                     $produto['quantidade'],
-                                    $valorUnitario,
-                                    $primeiroValor,     // Preservado ou novo
-                                    $ultimoPreco,       // Último preço ou NULL
-                                    $rodadas,           // Rodadas incrementadas se necessário
-                                    $fornecedor['prazo_pagamento'] ?? '',
-                                    $fornecedor['prazo_entrega'] ?? '',
+                                    $produto['valor_unitario'],
+                                    $produto['valor_total'],
+                                    $fornecedor['prazo_entrega'] ?? null,
                                     $fornecedor['frete'] ?? 0,
                                     $fornecedor['difal'] ?? 0,
-                                    $arquivo_cotacao
+                                    $fornecedor['prazo_pagamento'] ?? null,
+                                    $produto['valor_unitario'] // primeiro_valor = valor_unitario inicial
                                 ]);
                             }
                         }
@@ -416,78 +363,45 @@ try {
                             }
                         }
                         
+                        // Buscar o maior produto_id existente para esta cotação
+                        $stmt = $conn->prepare("SELECT MAX(produto_id) as max_id FROM itens_cotacao WHERE cotacao_id = ?");
+                        $stmt->execute([$cotacao_id]);
+                        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                        $produto_id = ($result['max_id'] ?? 0) + 1;
+
+                        // Inserir novos itens
+                        $stmt = $conn->prepare("
+                            INSERT INTO itens_cotacao (
+                                cotacao_id, 
+                                produto_id,
+                                produto_nome, 
+                                fornecedor_nome, 
+                                quantidade, 
+                                valor_unitario, 
+                                valor_total, 
+                                prazo_entrega,
+                                frete,
+                                difal,
+                                prazo_pagamento,
+                                primeiro_valor
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ");
+                        
                         foreach ($dados['fornecedores'] as $fornecedor) {
                             foreach ($fornecedor['produtos'] as $produto) {
-                                // Buscar o último produto_id para gerar o próximo ID
-                                $stmt = $conn->prepare("SELECT MAX(produto_id) FROM itens_cotacao");
-                                $stmt->execute();
-                                $ultimoProdutoId = $stmt->fetchColumn();
-                                
-                                // Gerar o próximo produto_id
-                                $produto_id = $ultimoProdutoId ? $ultimoProdutoId + 1 : 1;
-                                
-                                // Determinar valores para campos de histórico
-                                $valorUnitario = $produto['valor_unitario'];
-                                $key = $produto_id . '_' . $fornecedor['fornecedor_nome'];
-                                
-                                // Determinar o primeiro_valor (preservar se existir)
-                                $primeiroValor = $isPut && isset($valoresOriginais[$key]) 
-                                    ? $valoresOriginais[$key]['primeiro_valor']  // Preservar o valor original
-                                    : $valorUnitario;                            // Novo valor para criação
-                                
-                                // Determinar o último preço
-                                $ultimoPreco = $isPut && isset($valoresOriginais[$key]) 
-                                    ? $valoresOriginais[$key]['ultimo_preco']    // Último preço registrado
-                                    : null;                                      // NULL para novos itens
-                                
-                                // Determinar número de rodadas
-                                $rodadas = 0;
-                                if ($isPut && isset($valoresOriginais[$key])) {
-                                    $rodadas = $valoresOriginais[$key]['rodadas'];
-                                    // Incrementar rodadas se o valor mudou
-                                    if ($valorUnitario != $valoresOriginais[$key]['ultimo_preco']) {
-                                        $rodadas++;
-                                    }
-                                }
-                                
-                                // Inserir o item de cotação
-                                $stmt = $conn->prepare("
-                                    INSERT INTO itens_cotacao (
-                                        cotacao_id,
-                                        fornecedor_nome,
-                                        produto_id,
-                                        produto_nome,
-                                        produto_codigo,
-                                        produto_unidade,
-                                        quantidade,
-                                        valor_unitario,
-                                        primeiro_valor,
-                                        ultimo_preco,
-                                        rodadas,
-                                        prazo_pagamento,
-                                        prazo_entrega,
-                                        frete,
-                                        difal,
-                                        data_cotacao
-                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-                                ");
-                                
                                 $stmt->execute([
                                     $cotacao_id,
-                                    $fornecedor['fornecedor_nome'],
-                                    $produto_id,
+                                    $produto_id++,
                                     $produto['nome'],
-                                    $produto['codigo'],
-                                    $produto['unidade'],
+                                    $fornecedor['fornecedor_nome'],
                                     $produto['quantidade'],
-                                    $valorUnitario,
-                                    $primeiroValor,     // Preservado ou novo
-                                    $ultimoPreco,       // Último preço ou NULL
-                                    $rodadas,           // Rodadas incrementadas se necessário
-                                    $fornecedor['prazo_pagamento'] ?? '',
-                                    $fornecedor['prazo_entrega'] ?? '',
+                                    $produto['valor_unitario'],
+                                    $produto['valor_total'],
+                                    $fornecedor['prazo_entrega'] ?? null,
                                     $fornecedor['frete'] ?? 0,
-                                    $fornecedor['difal'] ?? 0
+                                    $fornecedor['difal'] ?? 0,
+                                    $fornecedor['prazo_pagamento'] ?? null,
+                                    $produto['valor_unitario'] // primeiro_valor = valor_unitario inicial
                                 ]);
                             }
                         }
@@ -550,147 +464,59 @@ try {
                         $stmt = $conn->prepare("UPDATE cotacoes SET status = ? WHERE id = ?");
                         $stmt->execute([$novoStatus, $dados['id']]);
                         
-                        foreach ($dados['fornecedores'] as $index => $fornecedor) {
-                            // Processar arquivo de cotação, se existir
-                            $arquivo_cotacao = null;
-                            $arquivo_key = "arquivo_cotacao_{$index}";
-                            
-                            if (isset($_FILES[$arquivo_key]) && $_FILES[$arquivo_key]['error'] === UPLOAD_ERR_OK) {
-                                $tempFile = $_FILES[$arquivo_key]['tmp_name'];
-                                $originalName = $_FILES[$arquivo_key]['name'];
-                                $fileExt = pathinfo($originalName, PATHINFO_EXTENSION);
-                                $newFileName = 'cotacao_' . $dados['id'] . '_fornecedor_' . $index . '_' . time() . '.' . $fileExt;
-                                $targetFile = $uploadDir . $newFileName;
-                                
-                                if (move_uploaded_file($tempFile, $targetFile)) {
-                                    $arquivo_cotacao = $newFileName;
-                                } else {
-                                    throw new Exception('Erro ao salvar o arquivo de cotação');
-                                }
-                            }
-                            
-                            foreach ($fornecedor['produtos'] as $produto) {
-                                $key = $produto['codigo'] . '_' . $fornecedor['fornecedor_nome'];
-                                
-                                // Verificar se o item já existe
-                                $stmt = $conn->prepare("
-                                    SELECT COUNT(*) FROM itens_cotacao 
-                                    WHERE cotacao_id = ? AND produto_id = ? AND fornecedor_nome = ?
-                                ");
-                                $stmt->execute([$dados['id'], $produto['codigo'], $fornecedor['fornecedor_nome']]);
-                                $itemExiste = $stmt->fetchColumn() > 0;
-                                
-                                if ($itemExiste) {
-                                    // Primeiro, obtenha o valor unitário atual
-                                    $stmtGetOldValue = $conn->prepare("SELECT valor_unitario FROM itens_cotacao WHERE cotacao_id = ? AND produto_id = ? AND fornecedor_nome = ?");
-                                    $stmtGetOldValue->execute([$dados['id'], $produto['codigo'], $fornecedor['fornecedor_nome']]);
-                                    $oldValueResult = $stmtGetOldValue->fetch(PDO::FETCH_ASSOC);
-                                    $valorUnitarioAntigo = $oldValueResult ? floatval($oldValueResult['valor_unitario']) : null;
-                                    
-                                    // Novo valor unitário
-                                    $valorUnitarioNovo = floatval($produto['valor_unitario']);
-
-                                    // Atualização dos dados
-                                    $stmt = $conn->prepare("
-                                        UPDATE itens_cotacao SET
-                                            produto_nome = ?,
-                                            produto_codigo = ?,
-                                            produto_unidade = ?,
-                                            quantidade = ?,
-                                            valor_unitario = ?,
-                                            ultimo_preco = ?,
-                                            prazo_pagamento = ?,
-                                            prazo_entrega = ?,
-                                            frete = ?,
-                                            difal = ?,
-                                            arquivo_cotacao = COALESCE(?, arquivo_cotacao)
-                                        WHERE cotacao_id = ? AND produto_id = ? AND fornecedor_nome = ?
-                                    ");
-                                    
-                                    $stmt->execute([
-                                        $produto['nome'],
-                                        $produto['codigo'],
-                                        $produto['unidade'],
-                                        $produto['quantidade'],
-                                        $valorUnitarioNovo,
-                                        $valorUnitarioNovo,
-                                        $fornecedor['prazo_pagamento'],
-                                        $fornecedor['prazo_entrega'],
-                                        $fornecedor['frete'],
-                                        $fornecedor['difal'],
-                                        $arquivo_cotacao,
-                                        $dados['id'],
-                                        $produto['id'],
-                                        $fornecedor['fornecedor_nome']
-                                    ]);
-                                } else {
-                                    // Inserir novo item
-                                    $stmt = $conn->prepare("
-                                        INSERT INTO itens_cotacao (
-                                            cotacao_id,
-                                            fornecedor_nome,
-                                            produto_id,
-                                            produto_nome,
-                                            produto_codigo,
-                                            produto_unidade,
-                                            quantidade,
-                                            valor_unitario,
-                                            primeiro_valor,
-                                            ultimo_preco,
-                                            rodadas,
-                                            prazo_pagamento,
-                                            prazo_entrega,
-                                            frete,
-                                            difal,
-                                            arquivo_cotacao
-                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                    ");
-                                    $stmt->execute([
-                                        $dados['id'],
-                                        $fornecedor['fornecedor_nome'],
-                                        $produto['id'],
-                                        $produto['nome'],
-                                        $produto['codigo'] ?? '',
-                                        $produto['unidade'] ?? 'un',
-                                        $produto['quantidade'],
-                                        $produto['valor_unitario'],
-                                        $produto['valor_unitario'], // primeiro_valor igual ao valor inicial
-                                        null,
-                                        0, // rodadas começa em 0
-                                        $fornecedor['prazo_pagamento'] ?? '',
-                                        $fornecedor['prazo_entrega'] ?? '',
-                                        $fornecedor['frete'] ?? 0,
-                                        $fornecedor['difal'] ?? 0,
-                                        $arquivo_cotacao
-                                    ]);
-                                }
-                            }
-                        }
+                        // Inserir novos itens
+                        $stmt = $conn->prepare("
+                            INSERT INTO itens_cotacao (
+                                cotacao_id, 
+                                produto_id,
+                                produto_nome, 
+                                fornecedor_nome, 
+                                quantidade, 
+                                valor_unitario, 
+                                valor_total, 
+                                prazo_entrega,
+                                frete,
+                                difal,
+                                prazo_pagamento,
+                                primeiro_valor
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ");
                         
-                        // Remover produtos que não estão mais no payload
-                        $produtosAtuais = [];
+                        $produto_id = 1; // Inicializa o contador
                         foreach ($dados['fornecedores'] as $fornecedor) {
                             foreach ($fornecedor['produtos'] as $produto) {
-                                $produtosAtuais[] = [
-                                    'produto_id' => $produto['id'],
-                                    'fornecedor_nome' => $fornecedor['fornecedor_nome']
-                                ];
+                                $stmt->execute([
+                                    $dados['id'],
+                                    $produto_id++,
+                                    $produto['nome'],
+                                    $fornecedor['fornecedor_nome'],
+                                    $produto['quantidade'],
+                                    $produto['valor_unitario'],
+                                    $produto['valor_total'],
+                                    $fornecedor['prazo_entrega'] ?? null,
+                                    $fornecedor['frete'] ?? 0,
+                                    $fornecedor['difal'] ?? 0,
+                                    $fornecedor['prazo_pagamento'] ?? null,
+                                    $produto['valor_unitario'] // primeiro_valor = valor_unitario inicial
+                                ]);
                             }
                         }
                         
-                        $condicoes = [];
-                        $params = [$dados['id']];
-                        foreach ($produtosAtuais as $produto) {
-                            $condicoes[] = "(produto_id = ? AND fornecedor_nome = ?)";
-                            $params[] = $produto['produto_id'];
-                            $params[] = $produto['fornecedor_nome'];
-                        }
-                        
-                        if (count($condicoes) > 0) {
-                            $sql = "DELETE FROM itens_cotacao WHERE cotacao_id = ? AND NOT (" . implode(' OR ', $condicoes) . ")";
-                            $stmt = $conn->prepare($sql);
-                            $stmt->execute($params);
-                        }
+                        // Excluir itens que não estão mais no payload
+                        $stmt = $conn->prepare("
+                            DELETE FROM itens_cotacao 
+                            WHERE cotacao_id = ? 
+                            AND NOT EXISTS (
+                                SELECT 1 FROM (
+                                    SELECT produto_nome, fornecedor_nome 
+                                    FROM itens_cotacao 
+                                    WHERE cotacao_id = ?
+                                ) AS temp 
+                                WHERE temp.produto_nome = itens_cotacao.produto_nome 
+                                AND temp.fornecedor_nome = itens_cotacao.fornecedor_nome
+                            )
+                        ");
+                        $stmt->execute([$dados['id'], $dados['id']]);
                         
                         $conn->commit();
                         echo json_encode(['success' => true, 'message' => 'Cotação atualizada com sucesso']);
@@ -748,31 +574,42 @@ try {
                             $stmtInsert = $conn->prepare("INSERT INTO cotacoes_renegociacoes (cotacao_id, produto_id, fornecedor_nome) VALUES (?, ?, ?)");
                         
                             foreach ($produtosRenegociar as $item) {
-                                $stmtInsert->execute([$cotacaoId, $item['produto_id'], $item['fornecedor_nome']]);
+                                // Validar produto_id antes da inserção
+                                if (!empty($item['produto_id']) && is_numeric($item['produto_id'])) {
+                                    $stmtInsert->execute([
+                                        $cotacaoId, 
+                                        (int)$item['produto_id'], 
+                                        $item['fornecedor_nome']
+                                    ]);
+                                } else {
+                                    error_log("Tentativa de inserir produto_id inválido na renegociação: " . json_encode($item));
+                                }
                             }
                         
                             // Atualiza o status da cotação e o motivo da renegociação
                             $stmt = $conn->prepare("UPDATE cotacoes SET status = ?, motivo_renegociacao = ? WHERE id = ?");
                             $stmt->execute(['renegociacao', $motivoRenegociacao, $cotacaoId]);
                             
-                            // Atualizar os valores como ultimo_preco e incrementar rodadas
-                            foreach ($produtosRenegociar as $item) {
-                                $key = $item['produto_id'] . '_' . $item['fornecedor_nome'];
-                                if (isset($valoresAtuais[$key])) {
-                                    $ultimoPreco = $valoresAtuais[$key]['valor_unitario'];
-                                    $novaRodada = $valoresAtuais[$key]['rodadas'] + 1;
-                                    
-                                    // Atualiza ultimo_preco e rodadas (preserva primeiro_valor automaticamente)
-                                    $stmt = $conn->prepare("UPDATE itens_cotacao SET ultimo_preco = ?, rodadas = ? WHERE cotacao_id = ? AND produto_id = ? AND fornecedor_nome = ?");
-                                    $stmt->execute([
-                                        $ultimoPreco,
-                                        $novaRodada,
-                                        $cotacaoId,
-                                        $item['produto_id'],
-                                        $item['fornecedor_nome']
-                                    ]);
-                                }
-                            }
+                            // Atualizar itens da cotação
+                            $stmt = $conn->prepare("
+                                UPDATE itens_cotacao 
+                                SET valor_unitario = :valor_unitario,
+                                    valor_total = :valor_total,
+                                    ultimo_preco = :ultimo_preco,
+                                    rodadas = rodadas + 1,
+                                    primeiro_valor = COALESCE(primeiro_valor, :valor_unitario)
+                                WHERE cotacao_id = :cotacao_id 
+                                AND produto_id = :produto_id 
+                                AND fornecedor_nome = :fornecedor_nome
+                            ");
+                            $stmt->execute([
+                                ':valor_unitario' => $valoresAtuais[$item['produto_id'] . '_' . $item['fornecedor_nome']]['valor_unitario'],
+                                ':valor_total' => $valoresAtuais[$item['produto_id'] . '_' . $item['fornecedor_nome']]['valor_total'],
+                                ':ultimo_preco' => $valoresAtuais[$item['produto_id'] . '_' . $item['fornecedor_nome']]['valor_unitario'],
+                                ':cotacao_id' => $cotacaoId,
+                                ':produto_id' => $item['produto_id'],
+                                ':fornecedor_nome' => $item['fornecedor_nome']
+                            ]);
                         
                             $conn->commit();
                             echo json_encode(['success' => true, 'message' => 'Cotação marcada para renegociação']);
@@ -908,12 +745,12 @@ if ($dados['status'] === 'aprovado') {
             }
 
             // Atualizar o status da cotação para aprovado
-            $stmt = $conn->prepare("UPDATE cotacoes SET status = 'aprovado', data_aprovacao = NOW() WHERE id = ?");
-            $stmt->execute([$dados['id']]);
+            $stmt = $conn->prepare("UPDATE cotacoes SET status = 'aprovado', data_aprovacao = NOW(), motivo_aprovacao = ? WHERE id = ?");
+            $stmt->execute([$dados['motivo_aprovacao'], $dados['id']]);
         } catch (Exception $e) {
             // Se a coluna 'aprovado' não existir, criá-la
             if (!columnExists($conn, 'itens_cotacao', 'aprovado')) {
-                $conn->exec("ALTER TABLE itens_cotacao ADD COLUMN aprovado TINYINT(1) DEFAULT 0");
+            $conn->exec("ALTER TABLE itens_cotacao ADD COLUMN aprovado TINYINT(1) DEFAULT 0");
             }
             
             // Tentar novamente após criar a coluna
@@ -1144,10 +981,17 @@ if ($dados['status'] === 'aprovado') {
             $stmt->execute([$dados['id']]);
             $itensSawing = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
+            // Calcular valor_total_inicial e valor_total_final
+            $valorTotalInicial = 0;
+            $valorTotalFinal = 0;
+            
             foreach ($itensSawing as $item) {
                 $valorInicialItem = floatval($item['primeiro_valor']);
                 $valorFinalItem = floatval($item['valor_unitario']);
                 $quantidade = floatval($item['quantidade']);
+                
+                $valorTotalInicial += $valorInicialItem * $quantidade;
+                $valorTotalFinal += $valorFinalItem * $quantidade;
                 
                 $economiaItem = ($valorInicialItem - $valorFinalItem) * $quantidade;
                 $economiaPercentualItem = $valorInicialItem > 0 ? (($valorInicialItem - $valorFinalItem) / $valorInicialItem * 100) : 0;
@@ -1156,13 +1000,13 @@ if ($dados['status'] === 'aprovado') {
                     INSERT INTO sawing_itens (
                         sawing_id, 
                         item_id, 
+                        descricao,
                         valor_unitario_inicial, 
                         valor_unitario_final, 
                         economia, 
                         economia_percentual, 
-                        status,
                         quantidade
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'concluido', ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 
                 $stmt->execute([
@@ -1176,6 +1020,27 @@ if ($dados['status'] === 'aprovado') {
                     $quantidade
                 ]);
             }
+            
+            // Atualizar os valores totais na tabela sawing
+            $economia = $valorTotalInicial - $valorTotalFinal;
+            $economiaPercentual = $valorTotalInicial > 0 ? ($economia / $valorTotalInicial * 100) : 0;
+            
+            $stmt = $conn->prepare("
+                UPDATE sawing SET 
+                    valor_total_inicial = ?,
+                    valor_total_final = ?,
+                    economia = ?,
+                    economia_percentual = ?
+                WHERE id = ?
+            ");
+            
+            $stmt->execute([
+                $valorTotalInicial,
+                $valorTotalFinal,
+                $economia,
+                $economiaPercentual,
+                $sawingId
+            ]);
         }
 
         error_log("Registro de sawing criado para cotação #{$dados['id']}");
@@ -1275,7 +1140,7 @@ exit;
                                 ];
                             }
                             
-                            // Atualiza o status
+                            // Atualizar o status
                             $novoStatus = $dados['status'] ?? 'pendente';
                             $stmt = $conn->prepare("UPDATE cotacoes SET status = ? WHERE id = ?");
                             $stmt->execute([$novoStatus, $dados['id']]);
@@ -1283,126 +1148,94 @@ exit;
                             // Atualizar ou inserir produtos
                             foreach ($dados['fornecedores'] as $fornecedor) {
                                 foreach ($fornecedor['produtos'] as $produto) {
-                                    $key = $produto['id'] . '_' . $fornecedor['fornecedor_nome'];
+                                    $key = $produto['nome'] . '_' . $fornecedor['fornecedor_nome'];
                                     
+                                    // Verificar se o item já existe
                                     $stmt = $conn->prepare("
                                         SELECT COUNT(*) FROM itens_cotacao 
-                                        WHERE cotacao_id = ? AND produto_id = ? AND fornecedor_nome = ?
+                                        WHERE cotacao_id = ? AND produto_nome = ? AND fornecedor_nome = ?
                                     ");
-                                    $stmt->execute([$dados['id'], $produto['id'], $fornecedor['fornecedor_nome']]);
+                                    $stmt->execute([$dados['id'], $produto['nome'], $fornecedor['fornecedor_nome']]);
                                     $itemExiste = $stmt->fetchColumn() > 0;
                                     
                                     if ($itemExiste) {
-                                        // Primeiro, obtenha o valor unitário atual
-                                        $stmtGetOldValue = $conn->prepare("SELECT valor_unitario FROM itens_cotacao WHERE cotacao_id = ? AND produto_id = ? AND fornecedor_nome = ?");
-                                        $stmtGetOldValue->execute([$dados['id'], $produto['id'], $fornecedor['fornecedor_nome']]);
-                                        $oldValueResult = $stmtGetOldValue->fetch(PDO::FETCH_ASSOC);
-                                        $valorUnitarioAntigo = $oldValueResult ? floatval($oldValueResult['valor_unitario']) : null;
-                                        
-                                        // Novo valor unitário
-                                        $valorUnitarioNovo = floatval($produto['valor_unitario']);
-
-                                        // Atualização dos dados
+                                        // Atualizar o item existente
                                         $stmt = $conn->prepare("
                                             UPDATE itens_cotacao SET
-                                                produto_nome = ?,
-                                                produto_codigo = ?,
-                                                produto_unidade = ?,
                                                 quantidade = ?,
                                                 valor_unitario = ?,
-                                                ultimo_preco = ?,
-                                                prazo_pagamento = ?,
+                                                valor_total = ?,
                                                 prazo_entrega = ?,
                                                 frete = ?,
                                                 difal = ?,
-                                                arquivo_cotacao = COALESCE(?, arquivo_cotacao)
-                                            WHERE cotacao_id = ? AND produto_id = ? AND fornecedor_nome = ?
+                                                prazo_pagamento = ?
+                                            WHERE cotacao_id = ? AND produto_nome = ? AND fornecedor_nome = ?
                                         ");
                                         
                                         $stmt->execute([
-                                            $produto['nome'],
-                                            $produto['codigo'],
-                                            $produto['unidade'],
                                             $produto['quantidade'],
-                                            $valorUnitarioNovo,
-                                            $valorUnitarioNovo,
-                                            $fornecedor['prazo_pagamento'],
-                                            $fornecedor['prazo_entrega'],
-                                            $fornecedor['frete'],
-                                            $fornecedor['difal'],
-                                            $arquivo_cotacao,
+                                            $produto['valor_unitario'],
+                                            $produto['valor_total'],
+                                            $fornecedor['prazo_entrega'] ?? null,
+                                            $fornecedor['frete'] ?? 0,
+                                            $fornecedor['difal'] ?? 0,
+                                            $fornecedor['prazo_pagamento'] ?? null,
                                             $dados['id'],
-                                            $produto['id'],
+                                            $produto['nome'],
                                             $fornecedor['fornecedor_nome']
                                         ]);
                                     } else {
                                         // Inserir novo item
                                         $stmt = $conn->prepare("
                                             INSERT INTO itens_cotacao (
-                                                cotacao_id,
-                                                fornecedor_nome,
+                                                cotacao_id, 
                                                 produto_id,
-                                                produto_nome,
-                                                produto_codigo,
-                                                produto_unidade,
-                                                quantidade,
-                                                valor_unitario,
-                                                primeiro_valor,
-                                                ultimo_preco,
-                                                rodadas,
-                                                prazo_pagamento,
+                                                produto_nome, 
+                                                fornecedor_nome, 
+                                                quantidade, 
+                                                valor_unitario, 
+                                                valor_total,
                                                 prazo_entrega,
                                                 frete,
                                                 difal,
-                                                arquivo_cotacao
-                                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                                prazo_pagamento,
+                                                primeiro_valor
+                                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                                         ");
+                                        
                                         $stmt->execute([
                                             $dados['id'],
-                                            $fornecedor['fornecedor_nome'],
-                                            $produto['id'],
+                                            $produto_id++,
                                             $produto['nome'],
-                                            $produto['codigo'] ?? '',
-                                            $produto['unidade'] ?? 'un',
+                                            $fornecedor['fornecedor_nome'],
                                             $produto['quantidade'],
                                             $produto['valor_unitario'],
-                                            $produto['valor_unitario'], // primeiro_valor igual ao valor inicial
-                                            null,
-                                            0, // rodadas começa em 0
-                                            $fornecedor['prazo_pagamento'] ?? '',
-                                            $fornecedor['prazo_entrega'] ?? '',
+                                            $produto['valor_total'],
+                                            $fornecedor['prazo_entrega'] ?? null,
                                             $fornecedor['frete'] ?? 0,
                                             $fornecedor['difal'] ?? 0,
-                                            $arquivo_cotacao
+                                            $fornecedor['prazo_pagamento'] ?? null,
+                                            $produto['valor_unitario'] // primeiro_valor = valor_unitario inicial
                                         ]);
                                     }
                                 }
                             }
                             
-                            // Remover produtos que não estão mais no payload
-                            $produtosAtuais = [];
-                            foreach ($dados['fornecedores'] as $fornecedor) {
-                                foreach ($fornecedor['produtos'] as $produto) {
-                                    $produtosAtuais[] = [
-                                        'produto_id' => $produto['id'],
-                                        'fornecedor_nome' => $fornecedor['fornecedor_nome']
-                                    ];
-                                }
-                            }
-                            
-                            $condicoes = [];
-                            $params = [$dados['id']];
-                            foreach ($produtosAtuais as $produto) {
-                                $condicoes[] = "(produto_id = ? AND fornecedor_nome = ?)";
-                                $params[] = $produto['produto_id'];
-                                $params[] = $produto['fornecedor_nome'];
-                            }
-                            
-                            if (count($condicoes) > 0) {
-                                $sql = "DELETE FROM itens_cotacao WHERE cotacao_id = ? AND NOT (" . implode(' OR ', $condicoes) . ")";
-                                $stmt = $conn->prepare($sql);
-                                $stmt->execute($params);
-                            }
+                            // Excluir itens que não estão mais no payload
+                            $stmt = $conn->prepare("
+                                DELETE FROM itens_cotacao 
+                                WHERE cotacao_id = ? 
+                                AND NOT EXISTS (
+                                    SELECT 1 FROM (
+                                        SELECT produto_nome, fornecedor_nome 
+                                        FROM itens_cotacao 
+                                        WHERE cotacao_id = ?
+                                    ) AS temp 
+                                    WHERE temp.produto_nome = itens_cotacao.produto_nome 
+                                    AND temp.fornecedor_nome = itens_cotacao.fornecedor_nome
+                                )
+                            ");
+                            $stmt->execute([$dados['id'], $dados['id']]);
                             
                             $conn->commit();
                             echo json_encode([

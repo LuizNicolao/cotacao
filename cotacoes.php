@@ -28,14 +28,19 @@ $is_admin = in_array(strtolower($usuario_tipo), ['administrador', 'gerencia', 'a
 $query = "SELECT 
     c.*, 
     u.nome as usuario_nome,
-    COUNT(i.id) as total_itens,
-     SUM(
-            CASE 
-                WHEN c.status = 'aprovado' AND i.aprovado = 1 THEN i.quantidade * i.valor_unitario
-                WHEN c.status != 'aprovado' THEN i.quantidade * i.valor_unitario
-                ELSE 0 
-            END
-        ) as valor_total
+    COUNT(CASE 
+        WHEN c.status = 'aprovado' THEN 
+            CASE WHEN i.aprovado = 1 THEN 1 END
+        ELSE 
+            CASE WHEN i.id IS NOT NULL THEN 1 END
+    END) as total_itens,
+    SUM(
+        CASE 
+            WHEN c.status = 'aprovado' AND i.aprovado = 1 THEN i.quantidade * i.valor_unitario
+            WHEN c.status != 'aprovado' THEN i.quantidade * i.valor_unitario
+            ELSE 0 
+        END
+    ) as valor_total
 FROM cotacoes c
 JOIN usuarios u ON c.usuario_id = u.id
 LEFT JOIN itens_cotacao i ON c.id = i.cotacao_id";

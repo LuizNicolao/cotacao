@@ -208,7 +208,7 @@ function renderizarItensCotacao(itens) {
         container.innerHTML = '<p>Nenhum item disponível para exibição</p>';
         return;
     }
-
+    
     // Verificar se a cotação está aprovada
     const cotacaoAprovada = itens.some(item => item.aprovado === 1);
     

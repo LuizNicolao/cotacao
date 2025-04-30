@@ -995,14 +995,25 @@ function renegociarCotacao(id, motivoTexto) {
     let motivoRenegociacao = motivoTexto || document.getElementById('texto-motivo-renegociacao').value.trim();
 
     const produtosSelecionados = Array.from(document.querySelectorAll('.checkbox-renegociar:checked'))
-        .map(cb => ({
-            produto_id: cb.dataset.produtoId,
-            fornecedor_nome: cb.dataset.fornecedor
-        }))
-        .filter(p => p.produto_id && p.fornecedor_nome);
+        .map(cb => {
+            const produtoId = parseInt(cb.dataset.produtoId);
+            const fornecedorNome = cb.dataset.fornecedor?.trim();
+            
+            // Validação mais rigorosa dos dados
+            if (isNaN(produtoId) || produtoId <= 0 || !fornecedorNome) {
+                console.warn('Produto inválido ignorado:', { produtoId, fornecedorNome });
+                return null;
+            }
+            
+            return {
+                produto_id: produtoId,
+                fornecedor_nome: fornecedorNome
+            };
+        })
+        .filter(p => p !== null);
 
     if (produtosSelecionados.length === 0) {
-        alert('Selecione ao menos um produto para renegociar.');
+        alert('Selecione ao menos um produto válido para renegociar.');
         return;
     }
 
@@ -1045,7 +1056,8 @@ function renegociarCotacao(id, motivoTexto) {
                     status: 'renegociacao',
                     motivo_renegociacao: motivoRenegociacao,
                     produtos_renegociar: produtosSelecionados,
-                    fornecedores: fornecedores
+                    fornecedores: fornecedores,
+                    primeiros_valores: primeirosValores // Adicionando os primeiros valores ao payload
                 };
 
                 console.log('Enviando renegociação:', payload);
