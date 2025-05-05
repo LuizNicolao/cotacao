@@ -124,6 +124,7 @@
                         <th>Produto</th>
                         <th>Fornecedor</th>
                         <th>Qtd</th>
+                        <th>Un</th>
                         <th>Valor Unitário</th>
                         <th>Prazo Entrega</th>
                         <th>Melhor Prz Entrg | Fornecedor</th>
@@ -1372,6 +1373,7 @@ function renderizarMelhorPreco() {
             html += `
                 <tr>
                     <td>${nomeProduto}</td>
+                    <td>${melhorPrecoItem.fornecedor_nome || '-'}</td>
                     <td>${quantidade}</td>
                     <td>${melhorPrecoItem.produto_unidade || 'UN'}</td>
                     <td>R$ ${valorUnitario.toFixed(4).replace('.', ',')}</td>
