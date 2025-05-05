@@ -1289,12 +1289,17 @@ function alternarVisualizacao(viewId) {
 }
 
 function renderizarMelhorPreco() {
-    if (!cotacaoData || !cotacaoData.itens) {
-        console.error('Dados da cotação não disponíveis');
+    if (!cotacaoData || !cotacaoData.itens || !Array.isArray(cotacaoData.itens)) {
+        console.error('Dados da cotação inválidos ou sem itens');
         return;
     }
     
     const tbody = document.getElementById('tabela-melhor-preco-body');
+    if (!tbody) {
+        console.error('Elemento tbody não encontrado');
+        return;
+    }
+    
     let html = '';
     let valorTotal = 0;
     
@@ -1302,6 +1307,11 @@ function renderizarMelhorPreco() {
     const produtosAgrupados = {};
     
     cotacaoData.itens.forEach(item => {
+        if (!item || !item.produto_nome) {
+            console.warn('Item inválido encontrado:', item);
+            return;
+        }
+        
         const nomeProduto = item.produto_nome;
         if (!produtosAgrupados[nomeProduto]) {
             produtosAgrupados[nomeProduto] = [];
@@ -1311,69 +1321,77 @@ function renderizarMelhorPreco() {
     
     // Para cada produto, encontrar o item com melhor preço, melhor prazo de entrega e melhor prazo de pagamento
     Object.entries(produtosAgrupados).forEach(([nomeProduto, itens]) => {
-        // Ordenar por valor unitário (menor para maior)
-        const itensPorPreco = [...itens].sort((a, b) => parseFloat(a.valor_unitario) - parseFloat(b.valor_unitario));
-        
-        // Pegar o item com menor preço
-        const melhorPrecoItem = itensPorPreco[0];
-        
-        // Calcular o valor total para este item
-        const quantidade = parseFloat(melhorPrecoItem.quantidade || 0);
-        const valorUnitario = parseFloat(melhorPrecoItem.valor_unitario || 0);
-        const valorItem = quantidade * valorUnitario;
-        valorTotal += valorItem;
-        
-        // Ordenar por prazo de entrega (menor para maior)
-        const itensComPrazoEntrega = itens.filter(item => item.prazo_entrega && item.prazo_entrega.trim() !== '');
-        let melhorPrazoEntregaItem = null;
-        
-        if (itensComPrazoEntrega.length > 0) {
-            melhorPrazoEntregaItem = [...itensComPrazoEntrega].sort((a, b) => {
-                const diasA = parseInt(a.prazo_entrega.match(/\d+/)[0] || 999);
-                const diasB = parseInt(b.prazo_entrega.match(/\d+/)[0] || 999);
-                return diasA - diasB;
-            })[0];
+        if (!itens || !Array.isArray(itens) || itens.length === 0) {
+            console.warn(`Nenhum item válido encontrado para o produto: ${nomeProduto}`);
+            return;
         }
         
-        // Ordenar por prazo de pagamento (maior para menor)
-        const itensComPrazoPagamento = itens.filter(item => item.prazo_pagamento && item.prazo_pagamento.trim() !== '');
-        let melhorPrazoPagamentoItem = null;
-        
-        if (itensComPrazoPagamento.length > 0) {
-            melhorPrazoPagamentoItem = [...itensComPrazoPagamento].sort((a, b) => {
-                const diasA = parseInt(a.prazo_pagamento.match(/\d+/)[0] || 0);
-                const diasB = parseInt(b.prazo_pagamento.match(/\d+/)[0] || 0);
-                return diasB - diasA; // Ordem decrescente (maior prazo é melhor)
-            })[0];
+        try {
+            // Ordenar por valor unitário (menor para maior)
+            itens.sort((a, b) => {
+                const valorA = parseFloat(a.valor_unitario) || 0;
+                const valorB = parseFloat(b.valor_unitario) || 0;
+                return valorA - valorB;
+            });
+            
+            const melhorPrecoItem = itens[0];
+            if (!melhorPrecoItem) {
+                console.warn(`Não foi possível encontrar o melhor preço para: ${nomeProduto}`);
+                return;
+            }
+            
+            const quantidade = parseFloat(melhorPrecoItem.quantidade) || 0;
+            const valorUnitario = parseFloat(melhorPrecoItem.valor_unitario) || 0;
+            valorTotal += quantidade * valorUnitario;
+            
+            // Encontrar melhor prazo de entrega
+            let melhorPrazoEntregaItem = null;
+            const itensComPrazoEntrega = itens.filter(item => item.prazo_entrega && item.prazo_entrega.trim() !== '');
+            if (itensComPrazoEntrega.length > 0) {
+                itensComPrazoEntrega.sort((a, b) => {
+                    const diasA = parseInt(a.prazo_entrega.match(/\d+/)?.[0] || 999);
+                    const diasB = parseInt(b.prazo_entrega.match(/\d+/)?.[0] || 999);
+                    return diasA - diasB;
+                });
+                melhorPrazoEntregaItem = itensComPrazoEntrega[0];
+            }
+            
+            // Encontrar melhor prazo de pagamento
+            let melhorPrazoPagamentoItem = null;
+            const itensComPrazoPagamento = itens.filter(item => item.prazo_pagamento && item.prazo_pagamento.trim() !== '');
+            if (itensComPrazoPagamento.length > 0) {
+                itensComPrazoPagamento.sort((a, b) => {
+                    const diasA = parseInt(a.prazo_pagamento.match(/\d+/)?.[0] || 0);
+                    const diasB = parseInt(b.prazo_pagamento.match(/\d+/)?.[0] || 0);
+                    return diasB - diasA; // Ordem decrescente (maior prazo é melhor)
+                });
+                melhorPrazoPagamentoItem = itensComPrazoPagamento[0];
+            }
+            
+            // Gerar HTML para a linha
+            html += `
+                <tr>
+                    <td>${nomeProduto}</td>
+                    <td>${quantidade}</td>
+                    <td>${melhorPrecoItem.produto_unidade || 'UN'}</td>
+                    <td>R$ ${valorUnitario.toFixed(4).replace('.', ',')}</td>
+                    <td>R$ ${(quantidade * valorUnitario).toFixed(4).replace('.', ',')}</td>
+                    <td>${melhorPrazoEntregaItem ? melhorPrazoEntregaItem.prazo_entrega : '-'}</td>
+                    <td>${melhorPrazoPagamentoItem ? melhorPrazoPagamentoItem.prazo_pagamento : '-'}</td>
+                    <td>${melhorPrecoItem.fornecedor_nome || '-'}</td>
+                </tr>
+            `;
+        } catch (error) {
+            console.error(`Erro ao processar produto ${nomeProduto}:`, error);
         }
-        
-        html += `
-            <tr>
-                <td>${melhorPrecoItem.produto_nome}</td>
-                <td>${melhorPrecoItem.fornecedor_nome}</td>
-                <td>${melhorPrecoItem.quantidade}</td>
-                <td>R$ ${formatarNumero(melhorPrecoItem.valor_unitario)}</td>
-                <td>${melhorPrecoItem.prazo_entrega || 'Não informado'}</td>
-                <td>
-                    ${melhorPrazoEntregaItem ? 
-                        `${melhorPrazoEntregaItem.prazo_entrega} | ${melhorPrazoEntregaItem.fornecedor_nome}` : 
-                        'Não informado'}
-                </td>
-                <td>${melhorPrecoItem.prazo_pagamento || 'Não informado'}</td>
-                <td>
-                    ${melhorPrazoPagamentoItem ? 
-                        `${melhorPrazoPagamentoItem.prazo_pagamento} | ${melhorPrazoPagamentoItem.fornecedor_nome}` : 
-                        'Não informado'}
-                </td>
-            </tr>
-        `;
     });
     
-    // Adicionar linha de valor total
+    // Adicionar linha de total
     html += `
         <tr class="total-row">
-            <td colspan="2"><strong>Valor Total</strong></td>
-            <td colspan="6"><strong>R$ ${formatarNumero(valorTotal)}</strong></td>
+            <td colspan="4"><strong>Total</strong></td>
+            <td><strong>R$ ${valorTotal.toFixed(4).replace('.', ',')}</strong></td>
+            <td colspan="3"></td>
         </tr>
     `;
     
