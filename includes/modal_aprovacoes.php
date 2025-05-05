@@ -1872,145 +1872,153 @@ function prepararItensParaAprovacao() {
     
     // Para cada produto, encontrar o item com melhor preço, prazo de entrega e prazo de pagamento
     Object.entries(produtosAgrupados).forEach(([nomeProduto, itens]) => {
-        // ===== MELHOR PREÇO =====
-        // Ordenar por valor unitário (menor para maior)
-        const itensPorPreco = [...itens].sort((a, b) => parseFloat(a.valor_unitario) - parseFloat(b.valor_unitario));
-        const melhorItemPreco = itensPorPreco[0];
-        
-        // Adicionar à lista de melhores preços
-        itensMelhorPreco.push({
-            produto_id: melhorItemPreco.produto_codigo,
-            fornecedor_nome: melhorItemPreco.fornecedor_nome,
-            valor_unitario: melhorItemPreco.valor_unitario,
-            produto_nome: melhorItemPreco.produto_nome
-        });
-        
-        // Adicionar à lista de visualização de melhores preços
-        const itemMelhorPrecoHTML = `
-            <div class="item-selecao">
-                <span class="melhor-preco-badge">Melhor Preço</span>
-                <label>
-                    ${melhorItemPreco.produto_nome}
-                    <div class="preco">R$ ${formatarNumero(melhorItemPreco.valor_unitario)}</div>
-                    <div class="fornecedor">Fornecedor: ${melhorItemPreco.fornecedor_nome}</div>
-                </label>
-            </div>
-        `;
-        listaMelhorPreco.innerHTML += itemMelhorPrecoHTML;
-        
-        // ===== MELHOR PRAZO DE ENTREGA =====
-        // Filtrar itens com prazo de entrega definido
-        const itensComPrazoEntrega = itens.filter(item => item.prazo_entrega && item.prazo_entrega.trim() !== '');
-        let melhorItemPrazoEntrega;
-        
-        if (itensComPrazoEntrega.length > 0) {
-            // Ordenar por prazo de entrega (menor para maior)
-            const itensPorPrazoEntrega = [...itensComPrazoEntrega].sort((a, b) => {
-                const diasA = parseInt(a.prazo_entrega.match(/\d+/)[0] || 999);
-                const diasB = parseInt(b.prazo_entrega.match(/\d+/)[0] || 999);
-                return diasA - diasB;
-            });
-            melhorItemPrazoEntrega = itensPorPrazoEntrega[0];
-        } else {
-            // Se nenhum item tiver prazo definido, usar o primeiro item
-            melhorItemPrazoEntrega = itens[0];
+        if (!itens || !Array.isArray(itens) || itens.length === 0) {
+            console.warn(`Nenhum item válido encontrado para o produto: ${nomeProduto}`);
+            return;
         }
         
-        // Adicionar à lista de melhores prazos de entrega
-        itensMelhorPrazoEntrega.push({
-            produto_id: melhorItemPrazoEntrega.produto_codigo,
-            fornecedor_nome: melhorItemPrazoEntrega.fornecedor_nome,
-            valor_unitario: melhorItemPrazoEntrega.valor_unitario,
-            produto_nome: melhorItemPrazoEntrega.produto_nome
-        });
-        
-        // Adicionar à lista de visualização de melhores prazos de entrega
-        const itemMelhorPrazoEntregaHTML = `
-            <div class="item-selecao">
-                <span class="melhor-prazo-badge">Melhor Prazo de Entrega</span>
-                <label>
-                    ${melhorItemPrazoEntrega.produto_nome}
-                    <div class="prazo">Prazo: ${melhorItemPrazoEntrega.prazo_entrega || 'Não informado'}</div>
-                    <div class="preco">R$ ${formatarNumero(melhorItemPrazoEntrega.valor_unitario)}</div>
-                    <div class="fornecedor">Fornecedor: ${melhorItemPrazoEntrega.fornecedor_nome}</div>
-                </label>
-            </div>
-        `;
-        listaMelhorPrazoEntrega.innerHTML += itemMelhorPrazoEntregaHTML;
-        
-        // ===== MELHOR PRAZO DE PAGAMENTO =====
-        // Filtrar itens com prazo de pagamento definido
-        const itensComPrazoPagamento = itens.filter(item => item.prazo_pagamento && item.prazo_pagamento.trim() !== '');
-        let melhorItemPrazoPagamento;
-        
-        if (itensComPrazoPagamento.length > 0) {
-            // Ordenar por prazo de pagamento (maior para menor)
-            const itensPorPrazoPagamento = [...itensComPrazoPagamento].sort((a, b) => {
-                const diasA = parseInt(a.prazo_pagamento.match(/\d+/)[0] || 0);
-                const diasB = parseInt(b.prazo_pagamento.match(/\d+/)[0] || 0);
-                return diasB - diasA; // Ordem decrescente (maior prazo é melhor)
+        try {
+            // Ordenar por valor unitário (menor para maior)
+            itens.sort((a, b) => {
+                const valorA = parseFloat(a.valor_unitario) || 0;
+                const valorB = parseFloat(b.valor_unitario) || 0;
+                return valorA - valorB;
             });
-            melhorItemPrazoPagamento = itensPorPrazoPagamento[0];
-        } else {
-            // Se nenhum item tiver prazo definido, usar o primeiro item
-            melhorItemPrazoPagamento = itens[0];
-        }
-        
-        // Adicionar à lista de melhores prazos de pagamento
-        itensMelhorPrazoPagamento.push({
-            produto_id: melhorItemPrazoPagamento.produto_codigo,
-            fornecedor_nome: melhorItemPrazoPagamento.fornecedor_nome,
-            valor_unitario: melhorItemPrazoPagamento.valor_unitario,
-            produto_nome: melhorItemPrazoPagamento.produto_nome
-        });
-        
-        // Adicionar à lista de visualização de melhores prazos de pagamento
-        const itemMelhorPrazoPagamentoHTML = `
-            <div class="item-selecao">
-                <span class="melhor-pagamento-badge">Melhor Prazo de Pagamento</span>
-                <label>
-                    ${melhorItemPrazoPagamento.produto_nome}
-                    <div class="prazo">Prazo: ${melhorItemPrazoPagamento.prazo_pagamento || 'Não informado'}</div>
-                    <div class="preco">R$ ${formatarNumero(melhorItemPrazoPagamento.valor_unitario)}</div>
-                    <div class="fornecedor">Fornecedor: ${melhorItemPrazoPagamento.fornecedor_nome}</div>
-                </label>
-            </div>
-        `;
-        listaMelhorPrazoPagamento.innerHTML += itemMelhorPrazoPagamentoHTML;
-        
-        // ===== SELEÇÃO MANUAL =====
-        // Adicionar todos os itens à lista de seleção manual
-        itens.forEach((item, index) => {
-            const ehMelhorPreco = index === 0; // O primeiro item é o de melhor preço
             
-            const itemHTML = `
+            const melhorPrecoItem = itens[0];
+            if (!melhorPrecoItem) {
+                console.warn(`Não foi possível encontrar o melhor preço para: ${nomeProduto}`);
+                return;
+            }
+            
+            // Adicionar à lista de melhores preços
+            itensMelhorPreco.push({
+                produto_id: melhorPrecoItem.produto_codigo,
+                fornecedor_nome: melhorPrecoItem.fornecedor_nome,
+                valor_unitario: melhorPrecoItem.valor_unitario,
+                produto_nome: melhorPrecoItem.produto_nome
+            });
+            
+            // Adicionar à lista de visualização de melhores preços
+            const itemMelhorPrecoHTML = `
                 <div class="item-selecao">
-                    <input type="checkbox" id="item-${item.produto_codigo}-${item.fornecedor_nome.replace(/\s+/g, '-')}" 
-                           data-produto-id="${item.produto_codigo}"
-                           data-fornecedor="${item.fornecedor_nome}"
-                           data-valor="${item.valor_unitario}"
-                           data-produto-nome="${item.produto_nome}"
-                           ${ehMelhorPreco ? 'checked' : ''}>
-                    <label for="item-${item.produto_codigo}-${item.fornecedor_nome.replace(/\s+/g, '-')}">
-                        ${item.produto_nome}
-                        <div class="preco">R$ ${formatarNumero(item.valor_unitario)}</div>
-                        <div class="fornecedor">Fornecedor: ${item.fornecedor_nome}</div>
-                        ${ehMelhorPreco ? '<span class="melhor-preco-badge">Melhor Preço</span>' : ''}
+                    <span class="melhor-preco-badge">Melhor Preço</span>
+                    <label>
+                        ${melhorPrecoItem.produto_nome}
+                        <div class="preco">R$ ${formatarNumero(melhorPrecoItem.valor_unitario)}</div>
+                        <div class="fornecedor">Fornecedor: ${melhorPrecoItem.fornecedor_nome}</div>
                     </label>
                 </div>
             `;
-            listaItensAprovacao.innerHTML += itemHTML;
+            listaMelhorPreco.innerHTML += itemMelhorPrecoHTML;
             
-            // Se for o melhor preço, adicionar à lista de selecionados por padrão
-            if (ehMelhorPreco) {
-                itensSelecionadosManualmente.push({
-                    produto_id: item.produto_codigo,
-                    fornecedor_nome: item.fornecedor_nome,
-                    valor_unitario: item.valor_unitario,
-                    produto_nome: item.produto_nome
+            // Encontrar melhor prazo de entrega
+            let melhorPrazoEntregaItem = null;
+            const itensComPrazoEntrega = itens.filter(item => item.prazo_entrega && item.prazo_entrega.trim() !== '');
+            if (itensComPrazoEntrega.length > 0) {
+                itensComPrazoEntrega.sort((a, b) => {
+                    const diasA = parseInt(a.prazo_entrega.match(/\d+/)?.[0] || 999);
+                    const diasB = parseInt(b.prazo_entrega.match(/\d+/)?.[0] || 999);
+                    return diasA - diasB;
                 });
+                melhorPrazoEntregaItem = itensComPrazoEntrega[0];
+            } else {
+                melhorPrazoEntregaItem = melhorPrecoItem;
             }
-        });
+            
+            // Adicionar à lista de melhores prazos de entrega
+            itensMelhorPrazoEntrega.push({
+                produto_id: melhorPrazoEntregaItem.produto_codigo,
+                fornecedor_nome: melhorPrazoEntregaItem.fornecedor_nome,
+                valor_unitario: melhorPrazoEntregaItem.valor_unitario,
+                produto_nome: melhorPrazoEntregaItem.produto_nome
+            });
+            
+            // Adicionar à lista de visualização de melhores prazos de entrega
+            const itemMelhorPrazoEntregaHTML = `
+                <div class="item-selecao">
+                    <span class="melhor-prazo-badge">Melhor Prazo de Entrega</span>
+                    <label>
+                        ${melhorPrazoEntregaItem.produto_nome}
+                        <div class="prazo">Prazo: ${melhorPrazoEntregaItem.prazo_entrega || 'Não informado'}</div>
+                        <div class="preco">R$ ${formatarNumero(melhorPrazoEntregaItem.valor_unitario)}</div>
+                        <div class="fornecedor">Fornecedor: ${melhorPrazoEntregaItem.fornecedor_nome}</div>
+                    </label>
+                </div>
+            `;
+            listaMelhorPrazoEntrega.innerHTML += itemMelhorPrazoEntregaHTML;
+            
+            // Encontrar melhor prazo de pagamento
+            let melhorPrazoPagamentoItem = null;
+            const itensComPrazoPagamento = itens.filter(item => item.prazo_pagamento && item.prazo_pagamento.trim() !== '');
+            if (itensComPrazoPagamento.length > 0) {
+                itensComPrazoPagamento.sort((a, b) => {
+                    const diasA = parseInt(a.prazo_pagamento.match(/\d+/)?.[0] || 0);
+                    const diasB = parseInt(b.prazo_pagamento.match(/\d+/)?.[0] || 0);
+                    return diasB - diasA; // Ordem decrescente (maior prazo é melhor)
+                });
+                melhorPrazoPagamentoItem = itensComPrazoPagamento[0];
+            } else {
+                melhorPrazoPagamentoItem = melhorPrecoItem;
+            }
+            
+            // Adicionar à lista de melhores prazos de pagamento
+            itensMelhorPrazoPagamento.push({
+                produto_id: melhorPrazoPagamentoItem.produto_codigo,
+                fornecedor_nome: melhorPrazoPagamentoItem.fornecedor_nome,
+                valor_unitario: melhorPrazoPagamentoItem.valor_unitario,
+                produto_nome: melhorPrazoPagamentoItem.produto_nome
+            });
+            
+            // Adicionar à lista de visualização de melhores prazos de pagamento
+            const itemMelhorPrazoPagamentoHTML = `
+                <div class="item-selecao">
+                    <span class="melhor-pagamento-badge">Melhor Prazo de Pagamento</span>
+                    <label>
+                        ${melhorPrazoPagamentoItem.produto_nome}
+                        <div class="prazo">Prazo: ${melhorPrazoPagamentoItem.prazo_pagamento || 'Não informado'}</div>
+                        <div class="preco">R$ ${formatarNumero(melhorPrazoPagamentoItem.valor_unitario)}</div>
+                        <div class="fornecedor">Fornecedor: ${melhorPrazoPagamentoItem.fornecedor_nome}</div>
+                    </label>
+                </div>
+            `;
+            listaMelhorPrazoPagamento.innerHTML += itemMelhorPrazoPagamentoHTML;
+            
+            // Adicionar todos os itens à lista de seleção manual
+            itens.forEach((item, index) => {
+                const ehMelhorPreco = index === 0; // O primeiro item é o de melhor preço
+                
+                const itemHTML = `
+                    <div class="item-selecao">
+                        <input type="checkbox" id="item-${item.produto_codigo}-${item.fornecedor_nome.replace(/\s+/g, '-')}" 
+                               data-produto-id="${item.produto_codigo}"
+                               data-fornecedor="${item.fornecedor_nome}"
+                               data-valor="${item.valor_unitario}"
+                               data-produto-nome="${item.produto_nome}"
+                               ${ehMelhorPreco ? 'checked' : ''}>
+                        <label for="item-${item.produto_codigo}-${item.fornecedor_nome.replace(/\s+/g, '-')}">
+                            ${item.produto_nome}
+                            <div class="preco">R$ ${formatarNumero(item.valor_unitario)}</div>
+                            <div class="fornecedor">Fornecedor: ${item.fornecedor_nome}</div>
+                            ${ehMelhorPreco ? '<span class="melhor-preco-badge">Melhor Preço</span>' : ''}
+                        </label>
+                    </div>
+                `;
+                listaItensAprovacao.innerHTML += itemHTML;
+                
+                // Se for o melhor preço, adicionar à lista de selecionados por padrão
+                if (ehMelhorPreco) {
+                    itensSelecionadosManualmente.push({
+                        produto_id: item.produto_codigo,
+                        fornecedor_nome: item.fornecedor_nome,
+                        valor_unitario: item.valor_unitario,
+                        produto_nome: item.produto_nome
+                    });
+                }
+            });
+        } catch (error) {
+            console.error(`Erro ao processar produto ${nomeProduto}:`, error);
+        }
     });
     
     // Adicionar event listeners para os checkboxes
