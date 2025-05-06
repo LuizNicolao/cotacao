@@ -68,7 +68,8 @@
 }
 
 .modal-large {
-    max-width: 1400px;
+    width: 90%;
+    max-width: 1200px;
 }
 
 .modal-content h3 {
@@ -1107,5 +1108,91 @@
 
 .tabela-produtos tr {
     animation: slideIn 0.3s ease-out;
+}
+
+/* Estilos para o Modal de Importação de Produtos */
+#produtos-importacao-container {
+    margin-top: 20px;
+}
+
+#produtos-importacao-container .table-container {
+    max-height: 400px;
+    overflow-y: auto;
+    margin: 15px 0;
+}
+
+#produtos-importacao-container .tabela-produtos {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#produtos-importacao-container .tabela-produtos th,
+#produtos-importacao-container .tabela-produtos td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+#produtos-importacao-container .tabela-produtos th {
+    background-color: #f5f5f5;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+#produtos-importacao-container .produto-check {
+    width: 20px;
+    height: 20px;
+}
+
+#produtos-importacao-container .fornecedor-select {
+    width: 100%;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+#produtos-importacao-container .status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+#produtos-importacao-container .status-badge.ja-existe {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+#produtos-importacao-container .status-badge.novo {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+#produtos-importacao-container .form-actions {
+    margin-top: 20px;
+    text-align: right;
+}
+
+#produtos-importacao-container .form-actions button {
+    margin-left: 10px;
+}
+
+/* Estilo para linhas com produtos já existentes */
+#produtos-importacao-container tr.disabled {
+    background-color: #f5f5f5;
+    opacity: 0.7;
+}
+
+/* Estilo para o checkbox desabilitado */
+#produtos-importacao-container .produto-check:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Estilo para o select desabilitado */
+#produtos-importacao-container .fornecedor-select:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    background-color: #f5f5f5;
 }
 

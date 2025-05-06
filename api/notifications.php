@@ -1,30 +1,40 @@
 <?php
-header('Content-Type: application/json');
 session_start();
 require_once '../config/database.php';
+require_once '../includes/notifications.php';
+
+header('Content-Type: application/json');
+
+if (!isset($_SESSION['usuario'])) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Unauthorized']);
+    exit;
+}
 
 $conn = conectarDB();
+$userId = $_SESSION['usuario']['id'];
 
 switch ($_SERVER['REQUEST_METHOD']) {
     case 'GET':
-        $stmt = $conn->prepare("
-            SELECT * FROM notifications 
-            WHERE user_id = ? 
-            ORDER BY created_at DESC 
-            LIMIT 10
-        ");
-        $stmt->execute([$_SESSION['usuario']['id']]);
-        echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+        $notifications = getUnreadNotifications($conn, $userId);
+        echo json_encode(['notifications' => $notifications]);
         break;
 
-    case 'PUT':
-        // Mark notifications as read
-        $stmt = $conn->prepare("
-            UPDATE notifications 
-            SET read_at = CURRENT_TIMESTAMP 
-            WHERE user_id = ? AND read_at IS NULL
-        ");
-        $stmt->execute([$_SESSION['usuario']['id']]);
-        echo json_encode(['success' => true]);
+    case 'POST':
+        $data = json_decode(file_get_contents('php://input'), true);
+        
+        if (!isset($data['notification_id'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Notification ID is required']);
+            exit;
+        }
+
+        $success = markNotificationAsRead($conn, $data['notification_id']);
+        echo json_encode(['success' => $success]);
+        break;
+
+    default:
+        http_response_code(405);
+        echo json_encode(['error' => 'Method not allowed']);
         break;
 }

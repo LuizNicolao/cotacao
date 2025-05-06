@@ -48,6 +48,7 @@ ini_set('max_execution_time', 300);
 
 session_start();
 require_once '../config/database.php';
+require_once '../includes/notifications.php';
 
 // Verificação inicial da sessão e do usuário
 if (!isset($_SESSION['usuario'])) {
@@ -284,12 +285,13 @@ try {
                                 quantidade, 
                                 valor_unitario, 
                                 valor_total, 
+                                unidade,
                                 prazo_entrega,
                                 frete,
                                 difal,
                                 prazo_pagamento,
                                 primeiro_valor
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ");
                         
                         foreach ($dados['fornecedores'] as $fornecedor) {
@@ -302,6 +304,7 @@ try {
                                     $produto['quantidade'],
                                     $produto['valor_unitario'],
                                     $produto['valor_total'],
+                                    $produto['unidade'],
                                     $fornecedor['prazo_entrega'] ?? null,
                                     $fornecedor['frete'] ?? 0,
                                     $fornecedor['difal'] ?? 0,
@@ -379,12 +382,13 @@ try {
                                 quantidade, 
                                 valor_unitario, 
                                 valor_total, 
+                                unidade,
                                 prazo_entrega,
                                 frete,
                                 difal,
                                 prazo_pagamento,
                                 primeiro_valor
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ");
                         
                         foreach ($dados['fornecedores'] as $fornecedor) {
@@ -397,6 +401,7 @@ try {
                                     $produto['quantidade'],
                                     $produto['valor_unitario'],
                                     $produto['valor_total'],
+                                    $produto['unidade'],
                                     $fornecedor['prazo_entrega'] ?? null,
                                     $fornecedor['frete'] ?? 0,
                                     $fornecedor['difal'] ?? 0,
@@ -474,12 +479,13 @@ try {
                                 quantidade, 
                                 valor_unitario, 
                                 valor_total, 
+                                unidade,
                                 prazo_entrega,
                                 frete,
                                 difal,
                                 prazo_pagamento,
                                 primeiro_valor
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ");
                         
                         $produto_id = 1; // Inicializa o contador
@@ -493,6 +499,7 @@ try {
                                     $produto['quantidade'],
                                     $produto['valor_unitario'],
                                     $produto['valor_total'],
+                                    $produto['unidade'],
                                     $fornecedor['prazo_entrega'] ?? null,
                                     $fornecedor['frete'] ?? 0,
                                     $fornecedor['difal'] ?? 0,
@@ -699,6 +706,21 @@ if ($dados['status'] === 'aguardando_aprovacao') {
             json_encode($dadosVersao),
             $usuarioId // Usar o ID verificado
         ]);
+
+        // Create notification for approvers
+        $stmt = $conn->prepare("SELECT id FROM usuarios WHERE tipo IN ('admin', 'gerencia', 'administrador')");
+        $stmt->execute();
+        $approvers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($approvers as $approver) {
+            createNotification(
+                $conn,
+                $approver['id'],
+                $dados['id'],
+                "Nova cotação #{$dados['id']} aguardando aprovação",
+                'nova_cotacao'
+            );
+        }
     } catch (Exception $e) {
         error_log("Erro ao criar versão: " . $e->getMessage());
         throw $e; // Mantém a exceção para que seja tratada no nível superior
@@ -807,6 +829,21 @@ if ($dados['status'] === 'aprovado') {
                 ) VALUES (?, ?, ?, ?)
             ");
             $stmt->execute([$usuario_id, $dados['id'], $message, 'aprovado_parcial']);
+        }
+
+        // Create notification for the buyer
+        $stmt = $conn->prepare("SELECT usuario_id FROM cotacoes WHERE id = ?");
+        $stmt->execute([$dados['id']]);
+        $buyerId = $stmt->fetchColumn();
+
+        if ($buyerId) {
+            createNotification(
+                $conn,
+                $buyerId,
+                $dados['id'],
+                "Sua cotação #{$dados['id']} foi aprovada",
+                'aprovado'
+            );
         }
     } else {
         try {
@@ -1197,12 +1234,13 @@ exit;
                                                 quantidade, 
                                                 valor_unitario, 
                                                 valor_total,
+                                                unidade,
                                                 prazo_entrega,
                                                 frete,
                                                 difal,
                                                 prazo_pagamento,
                                                 primeiro_valor
-                                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                                         ");
                                         
                                         $stmt->execute([
@@ -1213,6 +1251,7 @@ exit;
                                             $produto['quantidade'],
                                             $produto['valor_unitario'],
                                             $produto['valor_total'],
+                                            $produto['unidade'],
                                             $fornecedor['prazo_entrega'] ?? null,
                                             $fornecedor['frete'] ?? 0,
                                             $fornecedor['difal'] ?? 0,
@@ -1379,5 +1418,45 @@ function columnExists($conn, $table, $column) {
         return $stmt->rowCount() > 0;
     } catch (Exception $e) {
         return false;
+    }
+}
+
+// When a cotação is sent for approval
+if ($dados['status'] === 'aguardando_aprovacao') {
+    // ... existing code ...
+
+    // Create notification for approvers
+    $stmt = $conn->prepare("SELECT id FROM usuarios WHERE tipo IN ('admin', 'gerencia', 'administrador')");
+    $stmt->execute();
+    $approvers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($approvers as $approver) {
+        createNotification(
+            $conn,
+            $approver['id'],
+            $dados['id'],
+            "Nova cotação #{$dados['id']} aguardando aprovação",
+            'nova_cotacao'
+        );
+    }
+}
+
+// When a cotação is approved
+if ($dados['status'] === 'aprovado') {
+    // ... existing code ...
+
+    // Create notification for the buyer
+    $stmt = $conn->prepare("SELECT usuario_id FROM cotacoes WHERE id = ?");
+    $stmt->execute([$dados['id']]);
+    $buyerId = $stmt->fetchColumn();
+
+    if ($buyerId) {
+        createNotification(
+            $conn,
+            $buyerId,
+            $dados['id'],
+            "Sua cotação #{$dados['id']} foi aprovada",
+            'aprovado'
+        );
     }
 }

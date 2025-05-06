@@ -3,6 +3,7 @@
 session_start();
 require_once 'config/database.php';
 require_once 'includes/check_permissions.php';
+require_once 'includes/notifications.php';
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -88,6 +89,7 @@ function salvarVersaoCotacao($cotacaoId, $dados) {
     <title>Cotações - Sistema de Cotações</title>
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="assets/css/cotacoes.css">
+    <link rel="stylesheet" href="assets/css/notifications.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 <body>
@@ -104,11 +106,17 @@ function salvarVersaoCotacao($cotacaoId, $dados) {
                     <?php endif; ?>
                 </div>
                 <div class="user-info">
+                    <div class="notification-icon">
+                        <i class="fas fa-bell"></i>
+                        <span id="notification-badge"></span>
+                    </div>
                     <i class="fas fa-user-circle"></i>
                     <span><?php echo $_SESSION['usuario']['nome']; ?></span>
                     <span class="user-type">(<?php echo $usuario_tipo; ?>)</span>
                 </div>
             </header>
+
+            <div id="notification-container" class="notification-container"></div>
 
             <div class="content">
                 <!-- Adicionar filtros -->
@@ -227,6 +235,7 @@ $status_texto = [
     </div>
 
     <script src="assets/js/cotacoes.js"></script>
+    <script src="assets/js/notifications.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Configurar filtros

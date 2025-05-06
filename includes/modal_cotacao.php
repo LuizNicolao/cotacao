@@ -182,108 +182,504 @@
         <td class="valor-unit-difal-frete">0,0000</td>
         <td class="total">0,0000</td>
         <td>
-            <button type="button" class="btn-remover-produto" title="Remover produto">
+            <button type="button" class="btn-remover-produto" onclick="this.closest('tr').remove()">
                 <i class="fas fa-trash"></i>
             </button>
         </td>
     </tr>
 </template>
 
-<script>
-
-
-
-function renderizarItensCotacao(itens) {
-    console.log("Iniciando renderização de itens:", itens);
-    
-    const container = document.querySelector('#modalVisualizacao .itens-cotacao');
-    
-    if (!container) {
-        console.error('Container para itens não encontrado');
-        return;
-    }
-    
-    if (!itens || !Array.isArray(itens) || itens.length === 0) {
-        console.log("Nenhum item para renderizar");
-        container.innerHTML = '<p>Nenhum item disponível para exibição</p>';
-        return;
-    }
-    
-    // Verificar se a cotação está aprovada
-    const cotacaoAprovada = itens.some(item => item.aprovado === 1);
-    
-    // Se a cotação estiver aprovada, filtrar apenas os itens aprovados
-    const itensParaMostrar = cotacaoAprovada ? itens.filter(item => item.aprovado === 1) : itens;
-    
-    console.log("Agrupando itens por fornecedor");
-    // Agrupar itens por fornecedor
-    const itensPorFornecedor = itensParaMostrar.reduce((acc, item) => {
-        if (!acc[item.fornecedor_nome]) {
-            acc[item.fornecedor_nome] = [];
-        }
-        acc[item.fornecedor_nome].push(item);
-        return acc;
-    }, {});
-    
-    console.log("Fornecedores agrupados:", Object.keys(itensPorFornecedor));
-    
-    // Gerar HTML para cada fornecedor
-    const html = Object.entries(itensPorFornecedor).map(([fornecedor, itensDoFornecedor]) => {
-        const primeiroItem = itensDoFornecedor[0];
+<!-- Modal de Importação de Produtos -->
+<div id="modalImportacaoProdutos" class="modal">
+    <div class="modal-content modal-large">
+        <span class="close">×</span>
+        <h3><i class="fas fa-file-import"></i> Importar Novos Produtos</h3>
         
-        return `
-            <div class="fornecedor-section">
-                <h4>${fornecedor}</h4>
-                <div class="fornecedor-info">
-                    <p><strong>Prazo de Pagamento:</strong> ${primeiroItem.prazo_pagamento || 'Não informado'}</p>
-                    <p><strong>Prazo de Entrega:</strong> ${primeiroItem.prazo_entrega || 'Não informado'}</p>
-                    <p><strong>Frete:</strong> R$ ${formatarNumero(primeiroItem.frete || 0)}</p>
-                    <p><strong>DIFAL:</strong> ${primeiroItem.difal || '0'}%</p>
-                </div>
-                
-                <table class="tabela-itens">
+        <div id="produtos-importacao-container" style="display: none;">
+            <h4>Produtos Disponíveis</h4>
+            <div class="table-container">
+                <table class="tabela-produtos">
                     <thead>
                         <tr>
-                            <th>Produto</th>
-                            <th>Quantidade</th>
-                            <th>Ult. Vlr. Aprovado</th>
-                            <th>Valor Unitário</th>
-                            <th>Valor Total</th>
+                            <th><i class="fas fa-check"></i></th>
+                            <th><i class="fas fa-box"></i> Produto</th>
+                            <th><i class="fas fa-hashtag"></i> Código</th>
+                            <th><i class="fas fa-sort-numeric-up"></i> Quantidade</th>
+                            <th><i class="fas fa-ruler"></i> UN</th>
+                            <th><i class="fas fa-building"></i> Fornecedor</th>
+                            <th><i class="fas fa-info-circle"></i> Status</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        ${itensDoFornecedor.map(item => `
-                            <tr>
-                                <td>${item.produto_nome || 'Produto não especificado'}</td>
-                                <td>${item.quantidade || 0}</td>
-                                <td>${item.ultimo_valor_aprovado ? 'R$ ' + formatarNumero(item.ultimo_valor_aprovado) : '-'}</td>
-                                <td>R$ ${formatarNumero(item.valor_unitario || 0)}</td>
-                                <td>R$ ${formatarNumero((item.quantidade || 0) * (item.valor_unitario || 0))}</td>
-                            </tr>
-                        `).join('')}
+                    <tbody id="produtos-importacao-lista">
+                        <!-- Produtos serão listados aqui -->
                     </tbody>
                 </table>
             </div>
-        `;
-    }).join('');
-    
-    console.log("HTML gerado, atualizando container");
-    container.innerHTML = html || '<p>Nenhum item disponível para exibição</p>';
-}
 
-// Função auxiliar para formatar números
-function formatarNumero(valor) {
-    if (valor === null || valor === undefined || isNaN(parseFloat(valor))) {
-        return '0,0000';
+            <div class="form-actions">
+                <button type="button" id="btn-confirmar-importacao" class="btn-primary">
+                    <i class="fas fa-check"></i> Confirmar Importação
+                </button>
+                <button type="button" class="btn-secondary" onclick="document.getElementById('modalImportacaoProdutos').style.display='none'">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Função para verificar se um produto já existe na cotação
+    function produtoJaExisteNaCotacao(codigo) {
+        const produtosExistentes = document.querySelectorAll('.produtos-fornecedor tr');
+        for (const row of produtosExistentes) {
+            const produtoId = row.querySelector('.produto-id')?.value;
+            if (produtoId === codigo) {
+                return true;
+            }
+        }
+        return false;
     }
-    return parseFloat(valor).toFixed(3).replace('.', ',');
-}
 
-// Função auxiliar para formatar data
-function formatarData(dataString) {
-    if (!dataString) return '';
-    const data = new Date(dataString);
-    return data.toLocaleDateString('pt-BR');
-}
+    // Adicionar evento de clique para o botão de fechar do modal de importação
+    const modalImportacao = document.getElementById('modalImportacaoProdutos');
+    const closeButton = modalImportacao.querySelector('.close');
+    if (closeButton) {
+        closeButton.addEventListener('click', function() {
+            modalImportacao.style.display = 'none';
+            document.getElementById('produtos-importacao-container').style.display = 'none';
+        });
+    }
 
+    // Função para obter lista de fornecedores atuais
+    function getFornecedoresAtuais() {
+        const fornecedores = [];
+        document.querySelectorAll('.fornecedor-section').forEach(section => {
+            const nome = section.querySelector('.fornecedor-input')?.value;
+            if (nome) {
+                fornecedores.push(nome);
+            }
+        });
+        return fornecedores;
+    }
+
+    // Modificar o comportamento do botão "Importar Novos Produtos"
+    const btnImportar = document.getElementById('btn-importar-novos-produtos');
+    if (btnImportar) {
+        btnImportar.addEventListener('click', function() {
+            const cotacaoId = document.getElementById('cotacaoId').value;
+            const fileInput = document.getElementById('excelFile');
+            
+            if (!fileInput.files[0]) {
+                alert('Selecione um arquivo para importar.');
+                return;
+            }
+            
+            if (cotacaoId) {
+                // Se é uma cotação existente, processar o arquivo e abrir o modal
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, {type: 'array'});
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        
+                        // Converter a planilha para JSON
+                        const produtos = XLSX.utils.sheet_to_json(firstSheet, {
+                            header: 1,
+                            raw: false,
+                            defval: ''
+                        });
+
+                        // Pular a primeira linha (cabeçalho)
+                        const produtosSemCabecalho = produtos.slice(1);
+
+                        // Filtrar linhas vazias e obter dados das colunas C, D, E, F
+                        const produtosProcessados = produtosSemCabecalho
+                            .filter(row => row.length >= 6)
+                            .map(row => ({
+                                quantidade: row[2] || '1', // Coluna C
+                                codigo: row[3] || '', // Coluna D
+                                nome: row[4] || '', // Coluna E
+                                unidade: row[5] || 'UN' // Coluna F
+                            }))
+                            .filter(produto => produto.codigo && produto.nome);
+
+                        // Obter fornecedores atuais
+                        const fornecedores = getFornecedoresAtuais();
+                        
+                        if (fornecedores.length === 0) {
+                            alert('Adicione pelo menos um fornecedor antes de importar produtos.');
+                            return;
+                        }
+                        
+                        // Renderizar lista de produtos
+                        const tbody = document.getElementById('produtos-importacao-lista');
+                        tbody.innerHTML = '';
+                        
+                        produtosProcessados.forEach(produto => {
+                            const jaExiste = produtoJaExisteNaCotacao(produto.codigo);
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>
+                                    <input type="checkbox" class="produto-check" 
+                                           ${jaExiste ? 'disabled' : ''} 
+                                           data-codigo="${produto.codigo}"
+                                           data-nome="${produto.nome}"
+                                           data-quantidade="${produto.quantidade}"
+                                           data-unidade="${produto.unidade}">
+                                </td>
+                                <td>${produto.nome}</td>
+                                <td>${produto.codigo}</td>
+                                <td>${produto.quantidade}</td>
+                                <td>${produto.unidade}</td>
+                                <td>
+                                    <div class="fornecedor-checkbox-dropdown">
+                                        <button type="button" class="btn-toggle-fornecedores">Selecionar fornecedores</button>
+                                        <div class="fornecedor-checkbox-list vertical-scroll" style="display:none;position:static;box-shadow:none;left:auto;top:auto;">
+                                            ${fornecedores.map(f => `
+                                                <label style="display:block;margin-bottom:4px;">
+                                                    <input type="checkbox" class="fornecedor-checkbox" value="${f}" ${jaExiste ? 'disabled' : ''}> ${f}
+                                                </label>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    ${jaExiste ? 
+                                        '<span class="status-badge ja-existe">Já existe na cotação</span>' : 
+                                        '<span class="status-badge novo">Novo produto</span>'}
+                                </td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+
+                        // Mostrar container de produtos e abrir o modal
+                        document.getElementById('produtos-importacao-container').style.display = 'block';
+                        document.getElementById('modalImportacaoProdutos').style.display = 'block';
+                    } catch (error) {
+                        console.error('Erro ao processar arquivo:', error);
+                        alert('Erro ao processar o arquivo. Verifique se o formato está correto.');
+                    }
+                };
+
+                reader.readAsArrayBuffer(file);
+            } else {
+                // Se é uma nova cotação, manter o comportamento atual
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, {type: 'array'});
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        
+                        // Converter a planilha para JSON
+                        const produtos = XLSX.utils.sheet_to_json(firstSheet, {
+                            header: 1,
+                            raw: false,
+                            defval: ''
+                        });
+
+                        // Filtrar linhas vazias e obter dados das colunas C, D, E, F
+                        const produtosProcessados = produtos
+                            .filter(row => row.length >= 6) // Garantir que a linha tem pelo menos 6 colunas
+                            .map(row => ({
+                                quantidade: row[2] || '1', // Coluna C
+                                codigo: row[3] || '', // Coluna D
+                                nome: row[4] || '', // Coluna E
+                                unidade: row[5] || 'UN' // Coluna F
+                            }))
+                            .filter(produto => produto.codigo && produto.nome); // Remover produtos sem código ou nome
+
+                        // Adicionar produtos à primeira seção de fornecedor
+                        const primeiraSecao = document.querySelector('.fornecedor-section');
+                        if (primeiraSecao) {
+                            const produtosContainer = primeiraSecao.querySelector('.produtos-fornecedor');
+                            produtosProcessados.forEach(produto => {
+                                const tr = document.createElement('tr');
+                                tr.innerHTML = `
+                                    <td>
+                                        <div class="produto-selected">${produto.nome}</div>
+                                        <input type="hidden" class="produto-id" value="${produto.codigo}">
+                                    </td>
+                                    <td><input type="number" class="quantidade" value="${produto.quantidade}" required></td>
+                                    <td class="unidade-medida">${produto.unidade}</td>
+                                    <td><input type="number" class="valor-unitario" step="0.0001" min="0" required></td>
+                                    <td class="valor-unit-difal-frete">0,0000</td>
+                                    <td class="total">0,0000</td>
+                                    <td>
+                                        <button type="button" class="btn-remover-produto">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                `;
+                                produtosContainer.appendChild(tr);
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Erro ao processar arquivo:', error);
+                        alert('Erro ao processar o arquivo. Verifique se o formato está correto.');
+                    }
+                };
+
+                reader.readAsArrayBuffer(file);
+            }
+        });
+    }
+
+    // Função para confirmar importação
+    const btnConfirmar = document.getElementById('btn-confirmar-importacao');
+    if (btnConfirmar) {
+        btnConfirmar.addEventListener('click', function() {
+            const produtosSelecionados = document.querySelectorAll('#produtos-importacao-lista tr .produto-check:checked');
+            
+            if (produtosSelecionados.length === 0) {
+                alert('Selecione pelo menos um produto para importar.');
+                return;
+            }
+            
+            let algumFornecedorSelecionado = false;
+            produtosSelecionados.forEach(checkbox => {
+                const row = checkbox.closest('tr');
+                const fornecedorCheckboxes = row.querySelectorAll('.fornecedor-checkbox:checked');
+                if (fornecedorCheckboxes.length > 0) {
+                    algumFornecedorSelecionado = true;
+                }
+            });
+            if (!algumFornecedorSelecionado) {
+                alert('Selecione pelo menos um fornecedor para cada produto selecionado.');
+                return;
+            }
+
+            produtosSelecionados.forEach(checkbox => {
+                const row = checkbox.closest('tr');
+                const fornecedorCheckboxes = row.querySelectorAll('.fornecedor-checkbox:checked');
+                fornecedorCheckboxes.forEach(fornecedorCheckbox => {
+                    const fornecedorNome = fornecedorCheckbox.value;
+                    // Encontrar a seção do fornecedor
+                    const fornecedorSection = Array.from(document.querySelectorAll('.fornecedor-section'))
+                        .find(section => section.querySelector('.fornecedor-input')?.value === fornecedorNome);
+                    if (fornecedorSection) {
+                        const produtosContainer = fornecedorSection.querySelector('.produtos-fornecedor');
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>
+                                <div class="produto-selected">${checkbox.dataset.nome}</div>
+                                <input type="hidden" class="produto-id" value="${checkbox.dataset.codigo}">
+                            </td>
+                            <td><input type="number" class="quantidade" value="${checkbox.dataset.quantidade}" required></td>
+                            <td class="unidade-medida">${checkbox.dataset.unidade}</td>
+                            <td><input type="number" class="valor-unitario" step="0.0001" min="0" required></td>
+                            <td class="valor-unit-difal-frete">0,0000</td>
+                            <td class="total">0,0000</td>
+                            <td>
+                                <button type="button" class="btn-remover-produto">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        `;
+                        produtosContainer.appendChild(tr);
+
+                        // Adicionar eventos de cálculo
+                        const valorInput = tr.querySelector('.valor-unitario');
+                        const quantidadeInput = tr.querySelector('.quantidade');
+                        
+                        const recalcular = () => {
+                            const quantidade = parseFloat(quantidadeInput.value) || 0;
+                            const valor = parseFloat(valorInput.value) || 0;
+                            tr.querySelector('.total').textContent = (quantidade * valor).toFixed(4);
+                        };
+
+                        valorInput.addEventListener('input', recalcular);
+                        quantidadeInput.addEventListener('input', recalcular);
+                        tr.querySelector('.btn-remover-produto').addEventListener('click', () => {
+                            tr.remove();
+                            recalcularTotais();
+                        });
+                    }
+                });
+            });
+
+            // Fechar modal e limpar arquivo
+            document.getElementById('modalImportacaoProdutos').style.display = 'none';
+            document.getElementById('excelFile').value = '';
+            document.getElementById('produtos-importacao-container').style.display = 'none';
+        });
+    }
+});
+
+document.addEventListener('click', function(e) {
+    // Toggle dropdown de fornecedores
+    if (e.target.classList.contains('btn-toggle-fornecedores')) {
+        const dropdown = e.target.closest('.fornecedor-checkbox-dropdown');
+        const list = dropdown.querySelector('.fornecedor-checkbox-list');
+        const isOpen = list.style.display === 'block';
+        // Fecha todos os outros abertos
+        document.querySelectorAll('.fornecedor-checkbox-list').forEach(el => el.style.display = 'none');
+        if (!isOpen) {
+            list.style.display = 'block';
+        }
+        e.stopPropagation();
+    } else {
+        // Fecha dropdown se clicar fora
+        document.querySelectorAll('.fornecedor-checkbox-list').forEach(el => el.style.display = 'none');
+    }
+});
 </script>
+
+<style>
+/* Estilos para o Modal de Importação de Produtos */
+#modalImportacaoProdutos .modal-content {
+    width: 90%;
+    max-width: 1200px;
+}
+
+#produtos-importacao-container {
+    margin-top: 20px;
+}
+
+#produtos-importacao-container .table-container {
+    max-height: 400px;
+    overflow-y: auto;
+    margin: 15px 0;
+}
+
+#produtos-importacao-container .tabela-produtos {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#produtos-importacao-container .tabela-produtos th,
+#produtos-importacao-container .tabela-produtos td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+#produtos-importacao-container .tabela-produtos th {
+    background-color: #f5f5f5;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+#produtos-importacao-container .produto-check {
+    width: 20px;
+    height: 20px;
+}
+
+#produtos-importacao-container .fornecedor-select {
+    width: 100%;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+#produtos-importacao-container .status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+#produtos-importacao-container .status-badge.ja-existe {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+#produtos-importacao-container .status-badge.novo {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+#produtos-importacao-container .form-actions {
+    margin-top: 20px;
+    text-align: right;
+}
+
+#produtos-importacao-container .form-actions button {
+    margin-left: 10px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#produtos-importacao-container .btn-primary {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+}
+
+#produtos-importacao-container .btn-secondary {
+    background: linear-gradient(135deg, #6c757d, #495057);
+    color: white;
+}
+
+#produtos-importacao-container .btn-primary:hover,
+#produtos-importacao-container .btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilo para linhas com produtos já existentes */
+#produtos-importacao-container tr.disabled {
+    background-color: #f5f5f5;
+    opacity: 0.7;
+}
+
+/* Estilo para o checkbox desabilitado */
+#produtos-importacao-container .produto-check:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Estilo para o select desabilitado */
+#produtos-importacao-container .fornecedor-select:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    background-color: #f5f5f5;
+}
+
+#produtos-importacao-container .fornecedor-checkbox-dropdown {
+    position: relative;
+    display: block;
+    width: 100%;
+}
+#produtos-importacao-container .btn-toggle-fornecedores {
+    width: 100%;
+    padding: 4px 8px;
+    background: #f1f3f6;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.98em;
+    text-align: left;
+    margin-bottom: 2px;
+    transition: background 0.2s;
+}
+#produtos-importacao-container .btn-toggle-fornecedores:hover {
+    background: #e2e6ea;
+}
+#produtos-importacao-container .fornecedor-checkbox-list.vertical-scroll {
+    max-height: 120px;
+    overflow-y: auto;
+    min-width: 120px;
+    border: 1px solid #eee;
+    padding: 4px 8px;
+    background: #fafbfc;
+    border-radius: 4px;
+    position: static;
+    left: auto;
+    top: auto;
+    z-index: auto;
+    box-shadow: none;
+}
+</style>

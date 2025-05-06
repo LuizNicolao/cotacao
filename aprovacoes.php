@@ -2,6 +2,7 @@
 session_start();
 require_once 'config/database.php';
 require_once 'includes/check_permissions.php';
+require_once 'includes/notifications.php';
 
 // Verificar se o usuário está logado e tem permissão para acessar aprovações
 if (!isset($_SESSION['usuario']) || !userCan('aprovacoes', 'visualizar')) {
@@ -42,6 +43,7 @@ $cotacoes = $conn->query($query)->fetchAll(PDO::FETCH_ASSOC);
     <title>Aprovações - Sistema de Cotações</title>
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="assets/css/aprovacoes.css">
+    <link rel="stylesheet" href="assets/css/notifications.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 <body>
@@ -51,10 +53,16 @@ $cotacoes = $conn->query($query)->fetchAll(PDO::FETCH_ASSOC);
             <header class="top-bar">
                 <h2>Aprovações de Cotações</h2>
                 <div class="user-info">
+                    <div class="notification-icon">
+                        <i class="fas fa-bell"></i>
+                        <span id="notification-badge"></span>
+                    </div>
                     <i class="fas fa-user-circle"></i>
                     <span><?php echo $_SESSION['usuario']['nome']; ?></span>
                 </div>
             </header>
+
+            <div id="notification-container" class="notification-container"></div>
 
             <div class="filtros">
                 <div class="filtro-grupo">
@@ -141,6 +149,7 @@ $cotacoes = $conn->query($query)->fetchAll(PDO::FETCH_ASSOC);
 
     <?php include 'includes/modal_aprovacoes.php'; ?>
 
+    <script src="assets/js/notifications.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Configurar filtros
