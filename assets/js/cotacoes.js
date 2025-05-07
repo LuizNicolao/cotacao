@@ -10,6 +10,37 @@ let currentCotacaoId = null;
 let produtosImportados = [];
 let excelProducts = [];
 
+// Notification system
+function showNotification(type, message) {
+    const notificationContainer = document.getElementById('notification-container');
+    if (!notificationContainer) {
+        console.error('Notification container not found');
+        return;
+    }
+
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.innerHTML = `
+        <div class="notification-content">
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+            <span>${message}</span>
+        </div>
+        <button class="notification-close">&times;</button>
+    `;
+
+    notificationContainer.appendChild(notification);
+
+    // Add close button functionality
+    const closeButton = notification.querySelector('.notification-close');
+    closeButton.addEventListener('click', () => {
+        notification.remove();
+    });
+
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        notification.remove();
+    }, 5000);
+}
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
@@ -122,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
         formCotacao.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Form submitted');
-            salvarCotacao();
+            salvarCotacao(e);
         });
     }
 
@@ -519,17 +550,18 @@ function validarProduto(produto) {
     return { isValid, errors };
 }
   // Save cotação
-  function salvarCotacao() {
+  function salvarCotacao(e) {
+    e.preventDefault();
+    console.log('Iniciando salvamento da cotação');
     console.log('Table structure before save:', document.querySelectorAll('.produtos-fornecedor tr').length);
     document.querySelectorAll('.produtos-fornecedor tr').forEach((row, index) => {
         console.log(`Row ${index}:`, row.innerHTML);
-        console.log('Saving cotação');
     });
 
     // Verificar se há arquivos para upload
     const hasFiles = Array.from(document.querySelectorAll('.arquivo-cotacao')).some(input => input.files.length > 0);
     
-    // Coletar dados dos fornecedores (comum para ambos os métodos)
+    // Coletar dados dos fornecedores
     const fornecedores = [];
     
     document.querySelectorAll('.fornecedor-section').forEach((section, index) => {
@@ -542,14 +574,7 @@ function validarProduto(produto) {
             produtos: []
         };
         
-        // Verificar se há arquivo de cotação (apenas para o método FormData)
-        if (hasFiles) {
-            const arquivoCotacao = section.querySelector('.arquivo-cotacao')?.files[0];
-            if (arquivoCotacao) {
-                fornecedor.tem_arquivo = true;
-                fornecedor.arquivo_index = index;
-            }
-        }
+        console.log(`Processando fornecedor ${index}:`, fornecedor.fornecedor_nome);
         
         section.querySelectorAll('.produtos-fornecedor tr').forEach(row => {
             const produto = {
@@ -566,6 +591,7 @@ function validarProduto(produto) {
             
             if (validation.isValid) {
                 fornecedor.produtos.push(produto);
+                console.log('Produto adicionado ao fornecedor:', produto.nome);
             } else {
                 const errors = Object.values(validation.errors).filter(e => e);
                 console.warn('Produto inválido:', errors.join(', '), row);
@@ -575,18 +601,22 @@ function validarProduto(produto) {
         
         if (fornecedor.produtos.length > 0) {
             fornecedores.push(fornecedor);
+            console.log(`Fornecedor ${fornecedor.fornecedor_nome} adicionado com ${fornecedor.produtos.length} produtos`);
         }
     });
     
     if (fornecedores.length === 0) {
+        console.warn('Nenhum fornecedor válido encontrado');
         alert('Produto ignorado (faltando nome, quantidade ou valor');
         return;
     }
     
     const cotacaoId = document.getElementById('cotacaoId').value;
+    console.log('ID da cotação:', cotacaoId);
     
     // Antes de enviar, vamos buscar os valores originais para preservar o primeiro_valor
     if (cotacaoId) {
+        console.log('Buscando valores originais da cotação');
         fetch(`api/cotacoes.php?id=${cotacaoId}`)
             .then(response => {
                 if (!response.ok) {
@@ -595,6 +625,7 @@ function validarProduto(produto) {
                 return response.json();
             })
             .then(data => {
+                console.log('Dados originais recebidos:', data);
                 // Criar um mapa dos valores originais
                 const valoresOriginais = {};
                 if (data.itens && Array.isArray(data.itens)) {
@@ -607,6 +638,8 @@ function validarProduto(produto) {
                     });
                 }
                 
+                console.log('Valores originais mapeados:', valoresOriginais);
+                
                 // Adicionar o primeiro_valor para cada produto
                 fornecedores.forEach(fornecedor => {
                     fornecedor.produtos.forEach(produto => {
@@ -615,16 +648,26 @@ function validarProduto(produto) {
                             // Se temos o valor original, preservá-lo
                             produto.primeiro_valor = valoresOriginais[key].primeiro_valor;
                             produto.ultimo_preco = valoresOriginais[key].ultimo_preco;
+                            console.log(`Preservando valores originais para produto ${produto.nome}`);
                         } else {
                             // Se é um novo produto, o primeiro valor é o valor atual
                             produto.primeiro_valor = produto.valor_unitario;
                             produto.ultimo_preco = null;
+                            console.log(`Novo produto ${produto.nome} - usando valor atual como primeiro valor`);
                         }
                     });
                 });
                 
+                // Preparar dados para envio
+                const dados = {
+                    id: cotacaoId,
+                    fornecedores: fornecedores,
+                    usuario_id: getCurrentUserId()
+                };
+                
                 // Continuar com o envio dos dados
-                enviarDadosCotacao(cotacaoId, fornecedores, hasFiles);
+                console.log('Enviando dados atualizados para o servidor');
+                enviarDadosCotacao(dados);
             })
             .catch(error => {
                 console.error('Erro ao buscar dados originais da cotação:', error);
@@ -636,8 +679,16 @@ function validarProduto(produto) {
                     });
                 });
                 
+                // Preparar dados para envio
+                const dados = {
+                    id: cotacaoId,
+                    fornecedores: fornecedores,
+                    usuario_id: getCurrentUserId()
+                };
+                
                 // Continuar com o envio dos dados
-                enviarDadosCotacao(cotacaoId, fornecedores, hasFiles);
+                console.log('Enviando dados sem valores originais');
+                enviarDadosCotacao(dados);
             });
     } else {
         // Se é uma nova cotação, o primeiro valor é o valor atual
@@ -648,130 +699,205 @@ function validarProduto(produto) {
             });
         });
         
+        // Preparar dados para envio
+        const dados = {
+            fornecedores: fornecedores,
+            usuario_id: getCurrentUserId()
+        };
+        
         // Continuar com o envio dos dados
-        enviarDadosCotacao(cotacaoId, fornecedores, hasFiles);
+        console.log('Enviando nova cotação');
+        enviarDadosCotacao(dados);
     }
 }
 
 // Função auxiliar para enviar os dados da cotação
-function enviarDadosCotacao(cotacaoId, fornecedores, hasFiles) {
-    const dados = {
-        id: cotacaoId || null,
-        fornecedores: fornecedores,
-        versao: {
-            dados_json: JSON.stringify({
-                fornecedores: fornecedores,
-                data_criacao: new Date().toISOString(),
-                usuario_id: getCurrentUserId()
-            })
-        }
-    };
+async function enviarDadosCotacao(dados) {
+    console.log('Iniciando envio dos dados da cotação');
+    console.log('Dados a enviar:', dados);
     
-    // Se tiver arquivos, usamos FormData para enviar
-    if (hasFiles) {
-        const formData = new FormData();
+    try {
+        // Verificar se há arquivos para upload
+        const arquivos = document.querySelectorAll('.arquivo-cotacao');
+        const temArquivos = Array.from(arquivos).some(input => input.files.length > 0);
         
-        // Adicionar arquivos ao FormData
-        document.querySelectorAll('.fornecedor-section').forEach((section, index) => {
-            const arquivoCotacao = section.querySelector('.arquivo-cotacao')?.files[0];
-            if (arquivoCotacao) {
-                formData.append(`arquivo_cotacao_${index}`, arquivoCotacao);
+        if (temArquivos) {
+            // Se houver arquivos, usar FormData
+            const formData = new FormData();
+            formData.append('dados', JSON.stringify(dados));
+            
+            arquivos.forEach((input, index) => {
+                if (input.files.length > 0) {
+                    formData.append(`arquivos[${index}]`, input.files[0]);
+                }
+            });
+            
+            const response = await fetch('api/cotacoes.php', {
+                method: dados.id ? 'PUT' : 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        });
-        
-        // Adicionar dados JSON ao FormData
-        formData.append('dados', JSON.stringify(dados));
-        
-        // MUDANÇA IMPORTANTE: Sempre usar POST para FormData, mesmo para atualizações
-        // Se for uma atualização, adicionar um campo para indicar isso
-        const method = 'POST'; // Sempre POST para FormData
-        
-        if (cotacaoId) {
-            formData.append('_method', 'PUT'); // Indicar que é uma atualização
-        }
-        
-        console.log('Fornecedores finais antes de enviar:', fornecedores);
-        console.log('Enviando dados com arquivos via FormData');
-        
-        // Adicione antes do fetch com FormData
-        console.log('FormData entries:');
-        for (let pair of formData.entries()) {
-            if (pair[0] === 'dados') {
-                console.log(pair[0], '(JSON data)');
-            } else if (pair[1] instanceof File) {
-                console.log(pair[0], 'File:', pair[1].name, pair[1].size, 'bytes');
-            } else {
-                console.log(pair[0], pair[1]);
-            }
-        }
-        
-        fetch('api/cotacoes.php', {
-            method: method,
-            body: formData // Não definimos Content-Type para que o navegador defina automaticamente com boundary
-        })
-        .then(response => {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json();
-            } else {
-                return response.text().then(text => {
-                    console.error('Resposta não-JSON recebida:', text);
-                    throw new Error('Resposta inválida do servidor');
-                });
-            }
-        })
-        .then(data => {
-            console.log('Resposta:', data);
-            if (data.success) {
+            
+            const result = await response.json();
+            console.log('Resposta recebida:', response.status);
+            console.log('Resposta processada:', result);
+            
+            if (result.success) {
+                showNotification('success', result.message);
+                await atualizarTabelaCotacoes();
                 document.getElementById('modalCotacao').style.display = 'none';
-                window.location.reload();
             } else {
-                alert(data.message || 'Erro ao salvar cotação');
+                throw new Error(result.message);
             }
-        })
-        .catch(error => {
-            console.error('Erro:', error);
-            alert('Erro ao processar requisição: ' + error.message);
-        });
-    } else {
-        // Sem arquivos, usamos o método original com JSON
-        console.log('Dados a enviar:', dados);
-        const method = cotacaoId ? 'PUT' : 'POST';
-        console.log('Fornecedores finais antes de enviar:', fornecedores);
-        console.log('Payload final da cotação:', JSON.stringify(dados, null, 2));
-        
-        fetch('api/cotacoes.php', {
-            method: method,
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(dados)
-        })
-        .then(response => {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json();
-            } else {
-                return response.text().then(text => {
-                    console.error('Resposta não-JSON recebida:', text);
-                    throw new Error('Resposta inválida do servidor');
-                });
+        } else {
+            // Se não houver arquivos, enviar como JSON
+            console.log('Dados a enviar:', dados);
+            const response = await fetch('api/cotacoes.php', {
+                method: dados.id ? 'PUT' : 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(dados)
+            });
+            
+            console.log('Resposta recebida:', response.status);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        })
-        .then(data => {
-            console.log('Resposta:', data);
-            if (data.success) {
+            
+            const result = await response.json();
+            console.log('Resposta processada:', result);
+            
+            if (result.success) {
+                showNotification('success', result.message);
+                await atualizarTabelaCotacoes();
                 document.getElementById('modalCotacao').style.display = 'none';
-                window.location.reload();
             } else {
-                alert(data.message || 'Erro ao salvar cotação');
+                throw new Error(result.message);
             }
-        })
-        .catch(error => {
-            console.error('Erro:', error);
-            alert('Erro ao processar requisição: ' + error.message);
-        });
+        }
+    } catch (error) {
+        console.error('Erro ao enviar dados:', error);
+        showNotification('error', 'Erro ao salvar cotação: ' + error.message);
     }
+}
+
+// Função para atualizar a tabela de cotações sem recarregar a página
+function atualizarTabelaCotacoes() {
+    console.log('Atualizando tabela de cotações');
+    
+    // Primeiro, vamos buscar a lista de cotações
+    fetch('cotacoes.php?ajax=1')
+        .then(response => {
+            console.log('Status da resposta:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.text();
+        })
+        .then(html => {
+            console.log('HTML recebido:', html);
+            
+            // Criar um elemento temporário para fazer o parse do HTML
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            
+            // Encontrar a tabela no HTML recebido
+            const novaTabela = tempDiv.querySelector('#tabela-cotacoes tbody');
+            if (!novaTabela) {
+                throw new Error('Tabela não encontrada no HTML recebido');
+            }
+            
+            // Atualizar a tabela existente
+            const tbody = document.querySelector('#tabela-cotacoes tbody');
+            if (!tbody) {
+                throw new Error('Elemento tbody não encontrado na página atual');
+            }
+            
+            tbody.innerHTML = novaTabela.innerHTML;
+            
+            // Reanexar os event listeners
+            attachVisualizarEventListeners();
+            console.log('Tabela atualizada com sucesso');
+        })
+        .catch(error => {
+            console.error('Erro ao atualizar tabela:', error);
+            // Tentar uma abordagem alternativa
+            atualizarTabelaAlternativa();
+        });
+}
+
+// Função alternativa para atualizar a tabela
+function atualizarTabelaAlternativa() {
+    console.log('Tentando método alternativo de atualização');
+    
+    // Buscar apenas os dados necessários
+    fetch('api/cotacoes.php?list=1')
+        .then(response => response.json())
+        .then(cotacoes => {
+            console.log('Dados recebidos:', cotacoes);
+            const tbody = document.querySelector('#tabela-cotacoes tbody');
+            if (!tbody) {
+                console.error('Elemento tbody não encontrado');
+                return;
+            }
+
+            tbody.innerHTML = '';
+            
+            if (!cotacoes || cotacoes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="no-data">Nenhuma cotação encontrada</td></tr>';
+                return;
+            }
+
+            cotacoes.forEach(cotacao => {
+                const tr = document.createElement('tr');
+                tr.setAttribute('data-status', cotacao.status);
+                tr.setAttribute('data-usuario', cotacao.usuario_id);
+                
+                const dataCriacao = new Date(cotacao.data_criacao);
+                const dataFormatada = dataCriacao.toLocaleDateString('pt-BR');
+                
+                tr.innerHTML = `
+                    <td>${cotacao.id}</td>
+                    <td>${dataFormatada}</td>
+                    <td>${cotacao.usuario_nome || ''}</td>
+                    <td>${cotacao.total_itens || 0}</td>
+                    <td>
+                        <span class="status-badge ${cotacao.status}">
+                            ${traduzirStatus(cotacao.status)}
+                        </span>
+                    </td>
+                    <td class="acoes">
+                        <button class="btn-acao btn-visualizar" data-id="${cotacao.id}">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        ${cotacao.status === 'pendente' || cotacao.status === 'renegociacao' ? `
+                            <button class="btn-acao btn-editar" data-id="${cotacao.id}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-acao btn-aprovar" onclick="enviarParaAprovacao(${cotacao.id})">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        ` : ''}
+                    </td>
+                `;
+                
+                tbody.appendChild(tr);
+            });
+
+            // Reanexar os event listeners
+            attachVisualizarEventListeners();
+            console.log('Tabela atualizada com sucesso (método alternativo)');
+        })
+        .catch(error => {
+            console.error('Erro ao atualizar tabela (método alternativo):', error);
+            // Se ambos os métodos falharem, recarregar a página como último recurso
+            window.location.reload();
+        });
 }
 
 
