@@ -767,6 +767,7 @@ document.addEventListener('change', function(e) {
     max-height: 400px;
     overflow-y: auto;
     margin: 15px 0;
+    position: relative; /* Adicionado para posicionamento correto do dropdown */
 }
 
 #produtos-importacao-container .tabela-produtos {
@@ -786,6 +787,35 @@ document.addEventListener('change', function(e) {
     position: sticky;
     top: 0;
     z-index: 1;
+}
+
+#produtos-importacao-container .fornecedor-checkbox-dropdown {
+    position: relative;
+    width: 100%;
+}
+
+.fornecedor-checkbox-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-top: 4px;
+    padding: 8px;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* Ajuste para garantir que o dropdown fique visível */
+#produtos-importacao-container tr:last-child .fornecedor-checkbox-list {
+    bottom: 100%;
+    top: auto;
+    margin-top: 0;
+    margin-bottom: 4px;
 }
 
 #produtos-importacao-container .produto-check {
@@ -868,11 +898,6 @@ document.addEventListener('change', function(e) {
     background-color: #f5f5f5;
 }
 
-#produtos-importacao-container .fornecedor-checkbox-dropdown {
-    position: relative;
-    width: 100%;
-}
-
 .btn-toggle-fornecedores {
     width: 100%;
     padding: 8px 12px;
@@ -903,22 +928,6 @@ document.addEventListener('change', function(e) {
 
 .btn-toggle-fornecedores.active::after {
     transform: rotate(180deg);
-}
-
-.fornecedor-checkbox-list {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    margin-top: 4px;
-    padding: 8px;
-    z-index: 1000;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    max-height: 200px;
-    overflow-y: auto;
 }
 
 .fornecedor-checkbox-list label {
