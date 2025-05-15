@@ -31,7 +31,7 @@
             <div id="justificativa-emergencial" style="display: none;">
                 <div class="form-group">
                     <label>Motivo da Compra Emergencial: <span class="required">*</span></label>
-                    <select id="justificativa-padrao" class="form-control" required>
+                    <select id="justificativa-padrao" class="form-control">
                         <option value="">Selecione o motivo</option>
                         <option value="atraso_fornecedor">Atraso fornecedor</option>
                         <option value="aumento_consumo">Aumento de consumo</option>

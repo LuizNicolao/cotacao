@@ -110,6 +110,14 @@ $cotacoes = $conn->query($query)->fetchAll(PDO::FETCH_ASSOC);
                     </select>
                 </div>
                 <div class="filtro-grupo">
+                    <label>Tipo:</label>
+                    <select id="filtro-tipo">
+                        <option value="">Todos</option>
+                        <option value="programada">Programada</option>
+                        <option value="emergencial">Emergencial</option>
+                    </select>
+                </div>
+                <div class="filtro-grupo">
                     <label>Comprador:</label>
                     <select id="filtro-comprador">
                         <option value="">Todos</option>
@@ -291,6 +299,7 @@ $cotacoes = $conn->query($query)->fetchAll(PDO::FETCH_ASSOC);
         function limparFiltros() {
             // Limpar todos os campos de filtro
             document.getElementById('filtro-status').value = '';
+            document.getElementById('filtro-tipo').value = '';
             document.getElementById('filtro-comprador').value = '';
             document.getElementById('filtro-data-inicio').value = '';
             document.getElementById('filtro-data-fim').value = '';
@@ -308,6 +317,7 @@ $cotacoes = $conn->query($query)->fetchAll(PDO::FETCH_ASSOC);
         
         function filtrarCotacoes(cotacaoEspecifica = null) {
             const status = document.getElementById('filtro-status').value;
+            const tipo = document.getElementById('filtro-tipo').value;
             const comprador = document.getElementById('filtro-comprador').value;
             const dataInicio = document.getElementById('filtro-data-inicio').value;
             const dataFim = document.getElementById('filtro-data-fim').value;
@@ -324,6 +334,18 @@ $cotacoes = $conn->query($query)->fetchAll(PDO::FETCH_ASSOC);
                     // Filtrar por status
                     if (status && row.getAttribute('data-status') !== status) {
                         mostrar = false;
+                    }
+                    
+                    // Filtrar por tipo
+                    if (tipo) {
+                        const tipoCell = row.querySelector('td:nth-child(5)');
+                        const tipoText = tipoCell.textContent.trim().toLowerCase();
+                        const tipoFiltro = tipo.toLowerCase();
+                        
+                        if ((tipoFiltro === 'programada' && !tipoText.includes('programada')) ||
+                            (tipoFiltro === 'emergencial' && !tipoText.includes('emergencial'))) {
+                            mostrar = false;
+                        }
                     }
                     
                     // Filtrar por comprador

@@ -660,11 +660,33 @@ function enviarDadosCotacao(cotacaoId, fornecedores, hasFiles) {
     let motivoEmergencial = '';
     
     if (tipoCompra === 'emergencial') {
-        const justificativaPadrao = document.getElementById('justificativa_padrao').value;
-        if (justificativaPadrao === 'outro') {
-            motivoEmergencial = document.getElementById('justificativa_personalizada').value;
-        } else {
-            motivoEmergencial = justificativaPadrao;
+        const justificativaPadrao = document.getElementById('justificativa-padrao');
+        if (justificativaPadrao && justificativaPadrao.value) {
+            switch(justificativaPadrao.value) {
+                case 'atraso_fornecedor':
+                    const fornecedorAtraso = document.getElementById('fornecedor-atraso-input').value.trim();
+                    if (fornecedorAtraso) {
+                        motivoEmergencial = `Atraso fornecedor - ${fornecedorAtraso}`;
+                    }
+                    break;
+                case 'substituicao_reposicao':
+                    const fornecedorProblema = document.getElementById('fornecedor-problema-input').value.trim();
+                    if (fornecedorProblema) {
+                        motivoEmergencial = `Substituição/Reposição de produtos - ${fornecedorProblema}`;
+                    }
+                    break;
+                case 'outros':
+                    const justificativaOutros = document.getElementById('justificativa-personalizada').value.trim();
+                    if (justificativaOutros) {
+                        motivoEmergencial = `Outro(s) - ${justificativaOutros}`;
+                    }
+                    break;
+                default:
+                    const justificativaPersonalizada = document.getElementById('justificativa-personalizada').value.trim();
+                    if (justificativaPersonalizada) {
+                        motivoEmergencial = justificativaPersonalizada;
+                    }
+            }
         }
     }
 
@@ -2642,3 +2664,34 @@ function atualizarContadoresCards() {
 document.addEventListener('DOMContentLoaded', function() {
     atualizarContadoresCards();
 });
+
+// ... existing code ...
+    // Mostrar/esconder campos de emergência
+    tipoCompraRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            const justificativaEmerencial = document.getElementById('justificativa-emergencial');
+            const justificativaPadrao = document.getElementById('justificativa-padrao');
+            const justificativaPersonalizada = document.getElementById('justificativa-personalizada');
+            
+            if (this.value === 'emergencial') {
+                justificativaEmerencial.style.display = 'block';
+                justificativaPadrao.setAttribute('required', 'required');
+                if (justificativaPersonalizada) {
+                    justificativaPersonalizada.setAttribute('required', 'required');
+                }
+            } else {
+                justificativaEmerencial.style.display = 'none';
+                justificativaPadrao.removeAttribute('required');
+                if (justificativaPersonalizada) {
+                    justificativaPersonalizada.removeAttribute('required');
+                }
+                // Resetar campos quando mudar para programada
+                justificativaPadrao.value = '';
+                if (justificativaPersonalizada) {
+                    justificativaPersonalizada.value = '';
+                }
+                document.getElementById('justificativa-personalizada-container').style.display = 'none';
+            }
+        });
+    });
+// ... existing code ...
