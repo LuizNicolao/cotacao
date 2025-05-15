@@ -10,37 +10,6 @@ let currentCotacaoId = null;
 let produtosImportados = [];
 let excelProducts = [];
 
-// Notification system
-function showNotification(type, message) {
-    const notificationContainer = document.getElementById('notification-container');
-    if (!notificationContainer) {
-        console.error('Notification container not found');
-        return;
-    }
-
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.innerHTML = `
-        <div class="notification-content">
-            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
-            <span>${message}</span>
-        </div>
-        <button class="notification-close">&times;</button>
-    `;
-
-    notificationContainer.appendChild(notification);
-
-    // Add close button functionality
-    const closeButton = notification.querySelector('.notification-close');
-    closeButton.addEventListener('click', () => {
-        notification.remove();
-    });
-
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-        notification.remove();
-    }, 5000);
-}
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
@@ -153,7 +122,7 @@ document.addEventListener('DOMContentLoaded', function() {
         formCotacao.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Form submitted');
-            salvarCotacao(e);
+            salvarCotacao();
         });
     }
 
@@ -550,18 +519,17 @@ function validarProduto(produto) {
     return { isValid, errors };
 }
   // Save cotação
-  function salvarCotacao(e) {
-    e.preventDefault();
-    console.log('Iniciando salvamento da cotação');
+  function salvarCotacao() {
     console.log('Table structure before save:', document.querySelectorAll('.produtos-fornecedor tr').length);
     document.querySelectorAll('.produtos-fornecedor tr').forEach((row, index) => {
         console.log(`Row ${index}:`, row.innerHTML);
+        console.log('Saving cotação');
     });
 
     // Verificar se há arquivos para upload
     const hasFiles = Array.from(document.querySelectorAll('.arquivo-cotacao')).some(input => input.files.length > 0);
     
-    // Coletar dados dos fornecedores
+    // Coletar dados dos fornecedores (comum para ambos os métodos)
     const fornecedores = [];
     
     document.querySelectorAll('.fornecedor-section').forEach((section, index) => {
@@ -574,7 +542,14 @@ function validarProduto(produto) {
             produtos: []
         };
         
-        console.log(`Processando fornecedor ${index}:`, fornecedor.fornecedor_nome);
+        // Verificar se há arquivo de cotação (apenas para o método FormData)
+        if (hasFiles) {
+            const arquivoCotacao = section.querySelector('.arquivo-cotacao')?.files[0];
+            if (arquivoCotacao) {
+                fornecedor.tem_arquivo = true;
+                fornecedor.arquivo_index = index;
+            }
+        }
         
         section.querySelectorAll('.produtos-fornecedor tr').forEach(row => {
             const produto = {
@@ -591,7 +566,6 @@ function validarProduto(produto) {
             
             if (validation.isValid) {
                 fornecedor.produtos.push(produto);
-                console.log('Produto adicionado ao fornecedor:', produto.nome);
             } else {
                 const errors = Object.values(validation.errors).filter(e => e);
                 console.warn('Produto inválido:', errors.join(', '), row);
@@ -601,22 +575,18 @@ function validarProduto(produto) {
         
         if (fornecedor.produtos.length > 0) {
             fornecedores.push(fornecedor);
-            console.log(`Fornecedor ${fornecedor.fornecedor_nome} adicionado com ${fornecedor.produtos.length} produtos`);
         }
     });
     
     if (fornecedores.length === 0) {
-        console.warn('Nenhum fornecedor válido encontrado');
         alert('Produto ignorado (faltando nome, quantidade ou valor');
         return;
     }
     
     const cotacaoId = document.getElementById('cotacaoId').value;
-    console.log('ID da cotação:', cotacaoId);
     
     // Antes de enviar, vamos buscar os valores originais para preservar o primeiro_valor
     if (cotacaoId) {
-        console.log('Buscando valores originais da cotação');
         fetch(`api/cotacoes.php?id=${cotacaoId}`)
             .then(response => {
                 if (!response.ok) {
@@ -625,7 +595,6 @@ function validarProduto(produto) {
                 return response.json();
             })
             .then(data => {
-                console.log('Dados originais recebidos:', data);
                 // Criar um mapa dos valores originais
                 const valoresOriginais = {};
                 if (data.itens && Array.isArray(data.itens)) {
@@ -638,8 +607,6 @@ function validarProduto(produto) {
                     });
                 }
                 
-                console.log('Valores originais mapeados:', valoresOriginais);
-                
                 // Adicionar o primeiro_valor para cada produto
                 fornecedores.forEach(fornecedor => {
                     fornecedor.produtos.forEach(produto => {
@@ -648,26 +615,16 @@ function validarProduto(produto) {
                             // Se temos o valor original, preservá-lo
                             produto.primeiro_valor = valoresOriginais[key].primeiro_valor;
                             produto.ultimo_preco = valoresOriginais[key].ultimo_preco;
-                            console.log(`Preservando valores originais para produto ${produto.nome}`);
                         } else {
                             // Se é um novo produto, o primeiro valor é o valor atual
                             produto.primeiro_valor = produto.valor_unitario;
                             produto.ultimo_preco = null;
-                            console.log(`Novo produto ${produto.nome} - usando valor atual como primeiro valor`);
                         }
                     });
                 });
                 
-                // Preparar dados para envio
-                const dados = {
-                    id: cotacaoId,
-                    fornecedores: fornecedores,
-                    usuario_id: getCurrentUserId()
-                };
-                
                 // Continuar com o envio dos dados
-                console.log('Enviando dados atualizados para o servidor');
-                enviarDadosCotacao(dados);
+                enviarDadosCotacao(cotacaoId, fornecedores, hasFiles);
             })
             .catch(error => {
                 console.error('Erro ao buscar dados originais da cotação:', error);
@@ -679,16 +636,8 @@ function validarProduto(produto) {
                     });
                 });
                 
-                // Preparar dados para envio
-                const dados = {
-                    id: cotacaoId,
-                    fornecedores: fornecedores,
-                    usuario_id: getCurrentUserId()
-                };
-                
                 // Continuar com o envio dos dados
-                console.log('Enviando dados sem valores originais');
-                enviarDadosCotacao(dados);
+                enviarDadosCotacao(cotacaoId, fornecedores, hasFiles);
             });
     } else {
         // Se é uma nova cotação, o primeiro valor é o valor atual
@@ -699,205 +648,147 @@ function validarProduto(produto) {
             });
         });
         
-        // Preparar dados para envio
-        const dados = {
-            fornecedores: fornecedores,
-            usuario_id: getCurrentUserId()
-        };
-        
         // Continuar com o envio dos dados
-        console.log('Enviando nova cotação');
-        enviarDadosCotacao(dados);
+        enviarDadosCotacao(cotacaoId, fornecedores, hasFiles);
     }
 }
 
 // Função auxiliar para enviar os dados da cotação
-async function enviarDadosCotacao(dados) {
-    console.log('Iniciando envio dos dados da cotação');
-    console.log('Dados a enviar:', dados);
+function enviarDadosCotacao(cotacaoId, fornecedores, hasFiles) {
+    // Obter o tipo de compra e motivo emergencial
+    const tipoCompra = document.querySelector('input[name="tipo_compra"]:checked').value;
+    let motivoEmergencial = '';
     
-    try {
-        // Verificar se há arquivos para upload
-        const arquivos = document.querySelectorAll('.arquivo-cotacao');
-        const temArquivos = Array.from(arquivos).some(input => input.files.length > 0);
-        
-        if (temArquivos) {
-            // Se houver arquivos, usar FormData
-            const formData = new FormData();
-            formData.append('dados', JSON.stringify(dados));
-            
-            arquivos.forEach((input, index) => {
-                if (input.files.length > 0) {
-                    formData.append(`arquivos[${index}]`, input.files[0]);
-                }
-            });
-            
-            const response = await fetch('api/cotacoes.php', {
-                method: dados.id ? 'PUT' : 'POST',
-                body: formData
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const result = await response.json();
-            console.log('Resposta recebida:', response.status);
-            console.log('Resposta processada:', result);
-            
-            if (result.success) {
-                showNotification('success', result.message);
-                await atualizarTabelaCotacoes();
-                document.getElementById('modalCotacao').style.display = 'none';
-            } else {
-                throw new Error(result.message);
-            }
+    if (tipoCompra === 'emergencial') {
+        const justificativaPadrao = document.getElementById('justificativa_padrao').value;
+        if (justificativaPadrao === 'outro') {
+            motivoEmergencial = document.getElementById('justificativa_personalizada').value;
         } else {
-            // Se não houver arquivos, enviar como JSON
-            console.log('Dados a enviar:', dados);
-            const response = await fetch('api/cotacoes.php', {
-                method: dados.id ? 'PUT' : 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(dados)
-            });
-            
-            console.log('Resposta recebida:', response.status);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+            motivoEmergencial = justificativaPadrao;
+        }
+    }
+
+    const dados = {
+        id: cotacaoId || null,
+        tipo: tipoCompra,
+        motivo_emergencial: motivoEmergencial,
+        fornecedores: fornecedores,
+        versao: {
+            dados_json: JSON.stringify({
+                fornecedores: fornecedores,
+                data_criacao: new Date().toISOString(),
+                usuario_id: getCurrentUserId(),
+                tipo: tipoCompra,
+                motivo_emergencial: motivoEmergencial
+            })
+        }
+    };
+    
+    // Se tiver arquivos, usamos FormData para enviar
+    if (hasFiles) {
+        const formData = new FormData();
+        
+        // Adicionar arquivos ao FormData
+        document.querySelectorAll('.fornecedor-section').forEach((section, index) => {
+            const arquivoCotacao = section.querySelector('.arquivo-cotacao')?.files[0];
+            if (arquivoCotacao) {
+                formData.append(`arquivo_cotacao_${index}`, arquivoCotacao);
             }
-            
-            const result = await response.json();
-            console.log('Resposta processada:', result);
-            
-            if (result.success) {
-                showNotification('success', result.message);
-                await atualizarTabelaCotacoes();
-                document.getElementById('modalCotacao').style.display = 'none';
+        });
+        
+        // Adicionar dados JSON ao FormData
+        formData.append('dados', JSON.stringify(dados));
+        
+        // MUDANÇA IMPORTANTE: Sempre usar POST para FormData, mesmo para atualizações
+        // Se for uma atualização, adicionar um campo para indicar isso
+        const method = 'POST'; // Sempre POST para FormData
+        
+        if (cotacaoId) {
+            formData.append('_method', 'PUT'); // Indicar que é uma atualização
+        }
+        
+        console.log('Fornecedores finais antes de enviar:', fornecedores);
+        console.log('Enviando dados com arquivos via FormData');
+        
+        // Adicione antes do fetch com FormData
+        console.log('FormData entries:');
+        for (let pair of formData.entries()) {
+            if (pair[0] === 'dados') {
+                console.log(pair[0], '(JSON data)');
+            } else if (pair[1] instanceof File) {
+                console.log(pair[0], 'File:', pair[1].name, pair[1].size, 'bytes');
             } else {
-                throw new Error(result.message);
+                console.log(pair[0], pair[1]);
             }
         }
-    } catch (error) {
-        console.error('Erro ao enviar dados:', error);
-        showNotification('error', 'Erro ao salvar cotação: ' + error.message);
-    }
-}
-
-// Função para atualizar a tabela de cotações sem recarregar a página
-function atualizarTabelaCotacoes() {
-    console.log('Atualizando tabela de cotações');
-    
-    // Primeiro, vamos buscar a lista de cotações
-    fetch('cotacoes.php?ajax=1')
+        
+        fetch('api/cotacoes.php', {
+            method: method,
+            body: formData // Não definimos Content-Type para que o navegador defina automaticamente com boundary
+        })
         .then(response => {
-            console.log('Status da resposta:', response.status);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                return response.text().then(text => {
+                    console.error('Resposta não-JSON recebida:', text);
+                    throw new Error('Resposta inválida do servidor');
+                });
             }
-            return response.text();
         })
-        .then(html => {
-            console.log('HTML recebido:', html);
-            
-            // Criar um elemento temporário para fazer o parse do HTML
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = html;
-            
-            // Encontrar a tabela no HTML recebido
-            const novaTabela = tempDiv.querySelector('#tabela-cotacoes tbody');
-            if (!novaTabela) {
-                throw new Error('Tabela não encontrada no HTML recebido');
+        .then(data => {
+            console.log('Resposta:', data);
+            if (data.success) {
+                document.getElementById('modalCotacao').style.display = 'none';
+                window.location.reload();
+            } else {
+                alert(data.message || 'Erro ao salvar cotação');
             }
-            
-            // Atualizar a tabela existente
-            const tbody = document.querySelector('#tabela-cotacoes tbody');
-            if (!tbody) {
-                throw new Error('Elemento tbody não encontrado na página atual');
-            }
-            
-            tbody.innerHTML = novaTabela.innerHTML;
-            
-            // Reanexar os event listeners
-            attachVisualizarEventListeners();
-            console.log('Tabela atualizada com sucesso');
         })
         .catch(error => {
-            console.error('Erro ao atualizar tabela:', error);
-            // Tentar uma abordagem alternativa
-            atualizarTabelaAlternativa();
+            console.error('Erro:', error);
+            alert('Erro ao processar requisição: ' + error.message);
         });
-}
-
-// Função alternativa para atualizar a tabela
-function atualizarTabelaAlternativa() {
-    console.log('Tentando método alternativo de atualização');
-    
-    // Buscar apenas os dados necessários
-    fetch('api/cotacoes.php?list=1')
-        .then(response => response.json())
-        .then(cotacoes => {
-            console.log('Dados recebidos:', cotacoes);
-            const tbody = document.querySelector('#tabela-cotacoes tbody');
-            if (!tbody) {
-                console.error('Elemento tbody não encontrado');
-                return;
+    } else {
+        // Sem arquivos, usamos o método original com JSON
+        console.log('Dados a enviar:', dados);
+        const method = cotacaoId ? 'PUT' : 'POST';
+        console.log('Fornecedores finais antes de enviar:', fornecedores);
+        console.log('Payload final da cotação:', JSON.stringify(dados, null, 2));
+        
+        fetch('api/cotacoes.php', {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(dados)
+        })
+        .then(response => {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                return response.text().then(text => {
+                    console.error('Resposta não-JSON recebida:', text);
+                    throw new Error('Resposta inválida do servidor');
+                });
             }
-
-            tbody.innerHTML = '';
-            
-            if (!cotacoes || cotacoes.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="no-data">Nenhuma cotação encontrada</td></tr>';
-                return;
+        })
+        .then(data => {
+            console.log('Resposta:', data);
+            if (data.success) {
+                document.getElementById('modalCotacao').style.display = 'none';
+                window.location.reload();
+            } else {
+                alert(data.message || 'Erro ao salvar cotação');
             }
-
-            cotacoes.forEach(cotacao => {
-                const tr = document.createElement('tr');
-                tr.setAttribute('data-status', cotacao.status);
-                tr.setAttribute('data-usuario', cotacao.usuario_id);
-                
-                const dataCriacao = new Date(cotacao.data_criacao);
-                const dataFormatada = dataCriacao.toLocaleDateString('pt-BR');
-                
-                tr.innerHTML = `
-                    <td>${cotacao.id}</td>
-                    <td>${dataFormatada}</td>
-                    <td>${cotacao.usuario_nome || ''}</td>
-                    <td>${cotacao.total_itens || 0}</td>
-                    <td>
-                        <span class="status-badge ${cotacao.status}">
-                            ${traduzirStatus(cotacao.status)}
-                        </span>
-                    </td>
-                    <td class="acoes">
-                        <button class="btn-acao btn-visualizar" data-id="${cotacao.id}">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        ${cotacao.status === 'pendente' || cotacao.status === 'renegociacao' ? `
-                            <button class="btn-acao btn-editar" data-id="${cotacao.id}">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn-acao btn-aprovar" onclick="enviarParaAprovacao(${cotacao.id})">
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
-                        ` : ''}
-                    </td>
-                `;
-                
-                tbody.appendChild(tr);
-            });
-
-            // Reanexar os event listeners
-            attachVisualizarEventListeners();
-            console.log('Tabela atualizada com sucesso (método alternativo)');
         })
         .catch(error => {
-            console.error('Erro ao atualizar tabela (método alternativo):', error);
-            // Se ambos os métodos falharem, recarregar a página como último recurso
-            window.location.reload();
+            console.error('Erro:', error);
+            alert('Erro ao processar requisição: ' + error.message);
         });
+    }
 }
 
 
@@ -954,6 +845,12 @@ window.visualizarCotacao = function(id) {
                 <p><strong>Data Criação:</strong> ${formatarData(data.data_criacao)}</p>
                 <p class="data-aprovacao"><strong>Data Aprovação/Rejeição:</strong> ${data.data_aprovacao ? formatarData(data.data_aprovacao) : 'Pendente'}</p>
                 <p><strong>Status:</strong> <span class="status-badge ${data.status}">${traduzirStatus(data.status)}</span></p>
+                <p><strong>Tipo:</strong> ${data.tipo === 'emergencial' ? 
+                    '<span class="badge badge-warning"><i class="fas fa-exclamation-circle"></i> Emergencial</span>' : 
+                    '<span class="badge badge-info"><i class="fas fa-calendar"></i> Programada</span>'}
+                </p>
+                ${data.tipo === 'emergencial' && data.motivo_emergencial ? 
+                    `<p><strong>Motivo Emergencial:</strong> ${data.motivo_emergencial}</p>` : ''}
             `;
             atualizarResumoOrcamento(data);
 
@@ -1211,7 +1108,8 @@ function editarCotacao(cotacaoId) {
                     produto_codigo: item.codigo || item.produto_codigo || '',
                     produto_unidade: item.unidade || item.produto_unidade || '-',
                     quantidade: item.quantidade || 0,
-                    valor_unitario: item.valor_unitario || 0
+                    valor_unitario: item.valor_unitario || 0,
+                    ultimo_valor_aprovado: item.ultimo_valor_aprovado || null
                 });
             });
 
@@ -1301,11 +1199,29 @@ function editarCotacao(cotacaoId) {
                         // Calcular valor com DIFAL e frete
                         const difal = parseFloat(fornecedorSection.querySelector('.difal-percentual')?.value || 0);
                         const frete = parseFloat(fornecedorSection.querySelector('.frete-valor')?.value || 0);
-                        const quantidadeTotal = Array.from(fornecedorSection.querySelectorAll('.quantidade'))
-                            .reduce((sum, input) => sum + (parseFloat(input.value) || 0), 0);
                         
-                        const fretePorUnidade = quantidadeTotal > 0 ? frete / quantidadeTotal : 0;
+                        // Calcular valor total do produto
+                        const valorTotalProduto = quantidade * valorUnitario;
+                        
+                        // Calcular valor total da compra do fornecedor
+                        const valorTotalFornecedor = Array.from(fornecedorSection.querySelectorAll('.produtos-fornecedor tr'))
+                            .reduce((total, row) => {
+                                const qtd = parseFloat(row.querySelector('.quantidade')?.value || 0);
+                                const val = parseFloat(row.querySelector('.valor-unitario')?.value || 0);
+                                return total + (qtd * val);
+                            }, 0);
+                        
+                        // Calcular frete proporcional ao valor do produto
+                        const freteProporcional = valorTotalFornecedor > 0 ? 
+                            (valorTotalProduto / valorTotalFornecedor) * frete : 0;
+                        
+                        // Calcular frete por unidade
+                        const fretePorUnidade = quantidade > 0 ? freteProporcional / quantidade : 0;
+                        
+                        // Calcular valor com DIFAL
                         const valorComDifal = valorUnitario * (1 + (difal / 100));
+                        
+                        // Calcular valor final
                         const valorFinal = valorComDifal + fretePorUnidade;
                         
                         // Atualizar células
@@ -1321,15 +1237,7 @@ function editarCotacao(cotacaoId) {
                     fornecedorSection.querySelector('.frete-valor')?.addEventListener('input', recalcular);
                     
                     // Calcular valores iniciais
-                    recalcular();
-
-                    produtoRow.querySelector('.btn-remover-produto').addEventListener('click', () => {
-                        produtoRow.remove();
-                        // Recalcular todos os produtos após remover um item
-                        Array.from(fornecedorSection.querySelectorAll('.quantidade')).forEach(input => {
-                            input.dispatchEvent(new Event('input'));
-                        });
-                    });
+                    setTimeout(recalcular, 100); // Adicionar um pequeno delay para garantir que todos os elementos estejam carregados
                 });
             });
 
@@ -1554,6 +1462,12 @@ function renderizarVisualizacaoPorFornecedorModal(data) {
         // Pegar informações do primeiro item para dados do fornecedor
         const primeiroItem = itens[0];
         
+        // Calcular DIFAL e frete
+        const difal = parseFloat(primeiroItem.difal || 0);
+        const frete = parseFloat(primeiroItem.frete || 0);
+        const difalValor = totalFornecedor * (difal / 100);
+        const totalComDifalEFrete = totalFornecedor + difalValor + frete;
+        
         html += `
             <div class="fornecedor-card">
                 <h4>${fornecedor}</h4>
@@ -1562,7 +1476,7 @@ function renderizarVisualizacaoPorFornecedorModal(data) {
                     <p><strong>Prazo de Entrega:</strong> ${primeiroItem.prazo_entrega || 'Não informado'}</p>
                     <p><strong>Frete:</strong> R$ ${formatarNumero(primeiroItem.frete || 0)}</p>
                     <p><strong>DIFAL:</strong> ${primeiroItem.difal || '0'}%</p>
-                    <p><strong>Valor Total:</strong> R$ ${formatarNumero(totalFornecedor)}</p>
+                    <p><strong>Valor Total:</strong> R$ ${formatarNumero(totalComDifalEFrete)}</p>
                 </div>
                 
                 <table class="tabela-produtos">
@@ -1579,7 +1493,22 @@ function renderizarVisualizacaoPorFornecedorModal(data) {
                     </thead>
                     <tbody>
                         ${itens.map(item => {
-                            const valorUnitarioComDifalEFrete = calcularValorUnitarioComDifalEFrete(item, primeiroItem);
+                            // Calcular valor total do produto
+                            const valorTotalProduto = item.quantidade * item.valor_unitario;
+                            
+                            // Calcular frete proporcional
+                            const freteProporcional = totalFornecedor > 0 ? 
+                                (valorTotalProduto / totalFornecedor) * primeiroItem.frete : 0;
+                            
+                            // Calcular frete por unidade
+                            const fretePorUnidade = item.quantidade > 0 ? 
+                                freteProporcional / item.quantidade : 0;
+                            
+                            // Calcular valor com DIFAL
+                            const valorComDifal = item.valor_unitario * (1 + (primeiroItem.difal / 100));
+                            
+                            // Calcular valor final
+                            const valorUnitarioComDifalEFrete = valorComDifal + fretePorUnidade;
                             const total = item.quantidade * valorUnitarioComDifalEFrete;
                             
                             // Verificar se é o menor valor para este produto
@@ -1645,6 +1574,20 @@ function atualizarResumoOrcamento(data) {
         console.log('Calculando resumo apenas com itens aprovados:', itensParaCalculo.length, 'de', data.itens.length);
     }
     
+    // Agrupar itens por fornecedor para calcular DIFAL e frete
+    const itensPorFornecedor = {};
+    itensParaCalculo.forEach(item => {
+        const fornecedorNome = item.fornecedor_nome;
+        if (!itensPorFornecedor[fornecedorNome]) {
+            itensPorFornecedor[fornecedorNome] = {
+                itens: [],
+                difal: parseFloat(item.difal || 0),
+                frete: parseFloat(item.frete || 0)
+            };
+        }
+        itensPorFornecedor[fornecedorNome].itens.push(item);
+    });
+    
     // Encontrar o melhor preço para cada produto
     const melhoresPrecos = {};
     itensParaCalculo.forEach(item => {
@@ -1673,10 +1616,27 @@ function atualizarResumoOrcamento(data) {
         return total + item.quantidade;
     }, 0);
     
-    // Calcular valor total dos melhores preços
-    const valorTotal = Object.values(melhoresPrecos).reduce((total, item) => {
-        return total + (item.valor * item.quantidade);
-    }, 0);
+    // Calcular valor total dos melhores preços incluindo DIFAL e frete
+    let valorTotal = 0;
+    Object.values(melhoresPrecos).forEach(item => {
+        const fornecedor = itensPorFornecedor[item.fornecedor];
+        if (fornecedor) {
+            // Calcular valor base do produto
+            const valorBase = item.valor * item.quantidade;
+            
+            // Calcular DIFAL
+            const difalValor = valorBase * (fornecedor.difal / 100);
+            
+            // Calcular proporção do frete para este item
+            const totalFornecedor = fornecedor.itens.reduce((sum, i) => 
+                sum + (parseFloat(i.valor_unitario) * parseFloat(i.quantidade)), 0);
+            const proporcaoFrete = totalFornecedor > 0 ? valorBase / totalFornecedor : 0;
+            const freteProporcional = fornecedor.frete * proporcaoFrete;
+            
+            // Adicionar ao valor total
+            valorTotal += valorBase + difalValor + freteProporcional;
+        }
+    });
     
     // Atualizar os elementos HTML
     document.getElementById('total-produtos').textContent = totalProdutos;
@@ -1708,18 +1668,33 @@ function calcularValorUnitarioComDifalEFrete(item, fornecedor) {
         const valorUnitario = parseFloat(item.valor_unitario) || 0;
         const difal = parseFloat(fornecedor.difal) || 0;
         const frete = parseFloat(fornecedor.frete) || 0;
-        const quantidade = parseFloat(item.quantidade) || 1; // Evitar divisão por zero
+        const quantidade = parseFloat(item.quantidade) || 1;
 
-        // Calcular o valor do DIFAL
-        const valorDifal = (valorUnitario * difal) / 100;
+        // Calcular o valor total do produto
+        const valorTotalProduto = valorUnitario * quantidade;
 
-        // Calcular o valor do frete por unidade
-        const fretePorUnidade = frete / quantidade;
+        // Calcular o valor total da compra do fornecedor
+        const valorTotalFornecedor = Array.from(document.querySelectorAll('.produtos-fornecedor tr'))
+            .reduce((total, row) => {
+                const qtd = parseFloat(row.querySelector('.quantidade')?.value || 0);
+                const val = parseFloat(row.querySelector('.valor-unitario')?.value || 0);
+                return total + (qtd * val);
+            }, 0);
 
-        // Calcular o valor total por unidade
-        const valorTotal = valorUnitario + valorDifal + fretePorUnidade;
+        // Calcular frete proporcional ao valor do produto
+        const freteProporcional = valorTotalFornecedor > 0 ? 
+            (valorTotalProduto / valorTotalFornecedor) * frete : 0;
 
-        return valorTotal;
+        // Calcular frete por unidade
+        const fretePorUnidade = quantidade > 0 ? freteProporcional / quantidade : 0;
+
+        // Calcular valor com DIFAL
+        const valorComDifal = valorUnitario * (1 + (difal / 100));
+
+        // Calcular valor final
+        const valorFinal = valorComDifal + fretePorUnidade;
+
+        return valorFinal;
     } catch (error) {
         console.error('Erro ao calcular valor unitário com DIFAL e frete:', error);
         return 0;
@@ -2636,3 +2611,34 @@ window.adicionarFornecedor = adicionarFornecedor;
 window.adicionarProdutoSelect = adicionarProdutoSelect;
 window.calcularTotal = calcularTotal;
 window.removerProduto = removerProduto;
+
+// Função para atualizar os contadores dos cards
+function atualizarContadoresCards() {
+    const rows = document.querySelectorAll('#tabela-cotacoes tbody tr');
+    const contadores = {
+        'pendente': 0,
+        'aguardando_aprovacao': 0,
+        'aprovado': 0,
+        'rejeitado': 0,
+        'renegociacao': 0
+    };
+
+    rows.forEach(row => {
+        const status = row.getAttribute('data-status');
+        if (contadores.hasOwnProperty(status)) {
+            contadores[status]++;
+        }
+    });
+
+    // Atualizar os elementos na página
+    document.getElementById('pendentes-count').textContent = contadores['pendente'];
+    document.getElementById('aguardando-aprovacao-count').textContent = contadores['aguardando_aprovacao'];
+    document.getElementById('aprovadas-count').textContent = contadores['aprovado'];
+    document.getElementById('rejeitadas-count').textContent = contadores['rejeitado'];
+    document.getElementById('renegociacao-count').textContent = contadores['renegociacao'];
+}
+
+// Chamar a função quando a página carregar
+document.addEventListener('DOMContentLoaded', function() {
+    atualizarContadoresCards();
+});

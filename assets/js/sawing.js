@@ -53,6 +53,8 @@ function carregarDados(pagina = 1, limite = 10) {
                 
                 // Renderizar resumo se a função existir e houver dados de resumo
                 if (typeof renderizarResumo === 'function' && data.resumo) {
+                    // Adicionar os registros ao resumo
+                    data.resumo.registros = data.registros;
                     renderizarResumo(data.resumo);
                 }
             } else {
@@ -100,7 +102,16 @@ function obterFiltros() {
     const dataInicio = document.getElementById('data-inicio')?.value || '';
     const dataFim = document.getElementById('data-fim')?.value || '';
     const comprador = document.getElementById('filtro-comprador')?.value || '';
+    const tipo = document.getElementById('filtro-tipo')?.value || '';
     const status = document.getElementById('filtro-status')?.value || '';
+    
+    console.log('Valores dos filtros:', {
+        dataInicio,
+        dataFim,
+        comprador,
+        tipo,
+        status
+    });
     
     // Construir string de filtros
     let filtros = '';
@@ -108,16 +119,14 @@ function obterFiltros() {
     if (dataInicio) filtros += `&data_inicio=${dataInicio}`;
     if (dataFim) filtros += `&data_fim=${dataFim}`;
     if (comprador) filtros += `&comprador=${encodeURIComponent(comprador)}`;
+    if (tipo) filtros += `&tipo=${encodeURIComponent(tipo)}`;
     if (status) filtros += `&status=${status}`;
     
+    console.log('String de filtros gerada:', filtros);
     return filtros;
 }
 
 // Função para renderizar a tabela com os dados
-/**
- * Renderiza a tabela de registros do Sawing
- * @param {Array} registros - Array de objetos com os dados dos registros
- */
 function renderizarTabela(registros) {
     const tbody = document.getElementById('tabela-sawing-body');
     const infoRegistros = document.getElementById('info-registros');
@@ -165,6 +174,12 @@ function renderizarTabela(registros) {
         // Traduzir status
         const statusTraduzido = traduzirStatus(registro.status);
         
+        // Determinar o tipo de badge e ícone com base no tipo
+        const tipo = registro.tipo || 'programada';
+        const badgeClass = tipo === 'emergencial' ? 'badge-warning' : 'badge-info';
+        const badgeIcon = tipo === 'emergencial' ? 'fa-exclamation-circle' : 'fa-calendar';
+        const badgeText = tipo === 'emergencial' ? 'Emergencial' : 'Programada';
+        
         html += `
             <tr>
                 <td>${registro.id}</td>
@@ -176,10 +191,17 @@ function renderizarTabela(registros) {
                 <td>${economiaFormatada}</td>
                 <td>${economiaPercentualFormatada}</td>
                 <td>${registro.rodadas || '1'}</td>
-                <td><span class="status-${registro.status}">${statusTraduzido}</span></td>
                 <td>
-                    <button class="btn-detalhes" onclick="verDetalhes(${registro.id})">
-                        <i class="fas fa-eye"></i> Detalhes
+                    <span class="badge ${badgeClass}">
+                        <i class="fas ${badgeIcon}"></i>
+                        ${badgeText}
+                    </span>
+                </td>
+                <td>
+                    <button class="btn-detalhes" onclick="verDetalhes(${registro.id})" 
+                            data-sawing-id="${registro.id}" 
+                            data-data-registro="${registro.data_registro}">
+                        <i class="fas fa-eye"></i>
                     </button>
                 </td>
             </tr>
@@ -203,10 +225,10 @@ function renderizarTabela(registros) {
  * @returns {string} Valor formatado como moeda
  */
 function formatarMoeda(valor) {
-    return valor.toLocaleString('pt-BR', {
+    return new Intl.NumberFormat('pt-BR', {
         style: 'currency',
         currency: 'BRL'
-    });
+    }).format(valor);
 }
 
 // Função para renderizar a paginação
@@ -387,33 +409,33 @@ function renderizarResumo(resumo) {
                 <div class="comprador-card pior">
                     <div class="comprador-nome">
                         ${piorComprador.comprador_nome || 'Sem nome'}
-                        <span class="comprador-badge pior"><i class="fas fa-exclamation-triangle"></i> Pior Comprador</span>
-                </div>
+                        <span class="comprador-badge pior"><i class="fas fa-exclamation-circle"></i> Pior Comprador</span>
+                    </div>
                     <div class="comprador-metrica economia">
                         <span class="comprador-metrica-label">Economia Total:</span>
                         <span class="comprador-metrica-valor">R$ ${formatarNumero(economiaTotal)}</span>
-                                </div>
+                    </div>
                     <div class="comprador-metrica">
                         <span class="comprador-metrica-label">Economia (%):</span>
                         <span class="comprador-metrica-valor">${economiaPercentualPior.toFixed(2)}%</span>
-                            </div>
+                    </div>
                     <div class="comprador-metrica negociado">
                         <span class="comprador-metrica-label">Total Negociado:</span>
                         <span class="comprador-metrica-valor">R$ ${formatarNumero(valorInicial)}</span>
-                        </div>
+                    </div>
                     <div class="comprador-metrica aprovado">
                         <span class="comprador-metrica-label">Total Aprovado:</span>
                         <span class="comprador-metrica-valor">R$ ${formatarNumero(valorFinal)}</span>
-                                </div>
+                    </div>
                     <div class="comprador-metrica rodadas">
                         <span class="comprador-metrica-label">Total de Rodadas:</span>
                         <span class="comprador-metrica-valor">${rodadas}</span>
-                            </div>
+                    </div>
                     <div class="comprador-metrica">
                         <span class="comprador-metrica-label">Total de Registros:</span>
                         <span class="comprador-metrica-valor">${registros}</span>
-                        </div>
-                                </div>
+                    </div>
+                </div>
             `;
         }
 
@@ -442,7 +464,7 @@ function renderizarResumo(resumo) {
                     <div class="comprador-card">
                         <div class="comprador-nome">
                             ${comprador.comprador_nome || 'Sem nome'}
-                            </div>
+                        </div>
                         <div class="comprador-metrica economia">
                             <span class="comprador-metrica-label">Economia Total:</span>
                             <span class="comprador-metrica-valor">R$ ${formatarNumero(economiaTotal)}</span>
@@ -450,11 +472,11 @@ function renderizarResumo(resumo) {
                         <div class="comprador-metrica">
                             <span class="comprador-metrica-label">Economia (%):</span>
                             <span class="comprador-metrica-valor">${economiaPercentual.toFixed(2)}%</span>
-                                </div>
+                        </div>
                         <div class="comprador-metrica negociado">
                             <span class="comprador-metrica-label">Total Negociado:</span>
                             <span class="comprador-metrica-valor">R$ ${formatarNumero(valorInicial)}</span>
-                            </div>
+                        </div>
                         <div class="comprador-metrica aprovado">
                             <span class="comprador-metrica-label">Total Aprovado:</span>
                             <span class="comprador-metrica-valor">R$ ${formatarNumero(valorFinal)}</span>
@@ -462,16 +484,74 @@ function renderizarResumo(resumo) {
                         <div class="comprador-metrica rodadas">
                             <span class="comprador-metrica-label">Total de Rodadas:</span>
                             <span class="comprador-metrica-valor">${rodadas}</span>
-                    </div>
+                        </div>
                         <div class="comprador-metrica">
                             <span class="comprador-metrica-label">Total de Registros:</span>
                             <span class="comprador-metrica-valor">${registros}</span>
-                </div>
-            </div>
-        `;
+                        </div>
+                    </div>
+                `;
             });
             compradoresCards.innerHTML = html;
         }
+    }
+
+    // Atualizar os cards de resumo com os registros
+    if (resumo.registros) {
+        atualizarResumoCards(resumo.registros);
+    }
+}
+
+// Função para atualizar os cards de resumo
+function atualizarResumoCards(data) {
+    console.log('Dados recebidos em atualizarResumoCards:', data);
+    
+    // Contar cotações por tipo
+    let totalProgramada = 0;
+    let totalEmergencial = 0;
+    
+    // Verificar se data é um array
+    if (Array.isArray(data)) {
+        console.log('Data é um array, número de itens:', data.length);
+        
+        data.forEach((item, index) => {
+            console.log(`Item ${index}:`, item);
+            console.log(`Tipo do item ${index}:`, item.tipo);
+            
+            // Verificar se o item tem a propriedade tipo
+            if (item.tipo) {
+                if (item.tipo.toLowerCase() === 'programada') {
+                    totalProgramada++;
+                    console.log('Incrementando programada, total atual:', totalProgramada);
+                } else if (item.tipo.toLowerCase() === 'emergencial') {
+                    totalEmergencial++;
+                    console.log('Incrementando emergencial, total atual:', totalEmergencial);
+                }
+            }
+        });
+    } else {
+        console.log('Data não é um array:', typeof data);
+    }
+    
+    console.log('Totais finais - Programada:', totalProgramada, 'Emergencial:', totalEmergencial);
+    
+    // Atualizar os cards de tipo
+    const totalProgramadaElement = document.getElementById('total-programada');
+    const totalEmergencialElement = document.getElementById('total-emergencial');
+    
+    console.log('Elementos DOM encontrados:', {
+        totalProgramadaElement: !!totalProgramadaElement,
+        totalEmergencialElement: !!totalEmergencialElement
+    });
+    
+    if (totalProgramadaElement) {
+        totalProgramadaElement.textContent = totalProgramada;
+        console.log('Atualizado total programada para:', totalProgramada);
+    }
+    
+    if (totalEmergencialElement) {
+        totalEmergencialElement.textContent = totalEmergencial;
+        console.log('Atualizado total emergencial para:', totalEmergencial);
     }
 }
 
@@ -485,6 +565,234 @@ function traduzirStatus(status) {
     };
     
     return traducoes[status] || status;
+}
+
+// Função para formatar valor monetário
+function formatarMoeda(valor) {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    }).format(valor);
+}
+
+// Função para carregar a comparação de produtos
+async function carregarComparacaoProdutos(sawingId, dataRegistro) {
+    console.log('Carregando comparação para sawing:', sawingId, 'data:', dataRegistro);
+    
+    try {
+        const response = await fetch(`api/sawing/buscar_ultimo_aprovado.php?sawing_id=${sawingId}&data_registro=${dataRegistro}`);
+        const data = await response.json();
+        
+        console.log('Resposta da API:', data);
+        
+        if (data.error) {
+            console.error('Erro ao buscar comparação:', data.error);
+            document.getElementById('comparacao-container').innerHTML = `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> ${data.error}
+                </div>
+            `;
+            return;
+        }
+
+        // Limpar container de comparação
+        const container = document.getElementById('comparacao-container');
+        if (!container) return;
+        
+        container.innerHTML = '';
+
+        // Remover qualquer resumo de comparação existente
+        const resumosExistentes = document.querySelectorAll('.resumo-comparacao');
+        resumosExistentes.forEach(resumo => resumo.remove());
+
+        // Se não houver comparações, mostrar mensagem
+        if (!data.comparacoes || data.comparacoes.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Nenhum sawing anterior encontrado com produtos similares
+                </div>
+            `;
+            return;
+        }
+
+        // Calcular resumo da comparação
+        let totalEconomia = 0;
+        let totalProdutos = 0;
+        let produtosComEconomia = 0;
+        let maiorEconomia = 0;
+        let maiorEconomiaProduto = '';
+
+        data.comparacoes.forEach(comparacao => {
+            data.produtos_atuais.forEach(produtoAtual => {
+                const produtoAnterior = comparacao.produtos_anteriores.find(p => p.descricao === produtoAtual.descricao);
+                if (produtoAnterior) {
+                    const valorAtual = parseFloat(produtoAtual.valor_unitario_final);
+                    const valorAnterior = parseFloat(produtoAnterior.valor_unitario_final);
+                    const economia = valorAnterior - valorAtual;
+                    
+                    if (economia > 0) {
+                        totalEconomia += economia;
+                        produtosComEconomia++;
+                        if (economia > maiorEconomia) {
+                            maiorEconomia = economia;
+                            maiorEconomiaProduto = produtoAtual.descricao;
+                        }
+                    }
+                    totalProdutos++;
+                }
+            });
+        });
+
+        // Adicionar resumo da comparação ao cabeçalho do modal
+        const resumoComparacao = document.createElement('div');
+        resumoComparacao.className = 'resumo-comparacao';
+        resumoComparacao.innerHTML = `
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="label">Economia vs. Cotações Anteriores</div>
+                    <div class="value ${totalEconomia > 0 ? 'variacao-positiva' : 'variacao-negativa'}">
+                        R$ ${formatarNumero(totalEconomia)}
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="label">Produtos com Preço Menor que Anteriores</div>
+                    <div class="value">
+                        ${produtosComEconomia} de ${totalProdutos}
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="label">Maior Redução de Preço</div>
+                    <div class="value">
+                        R$ ${formatarNumero(maiorEconomia)}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Inserir o resumo após o primeiro info-grid no modal
+        const primeiroInfoGrid = document.querySelector('#modalDetalhesSawing .info-grid');
+        if (primeiroInfoGrid) {
+            primeiroInfoGrid.parentNode.insertBefore(resumoComparacao, primeiroInfoGrid.nextSibling);
+        }
+
+        // Criar botão de toggle
+        const toggleButton = document.createElement('button');
+        toggleButton.className = 'btn-toggle-comparacao';
+        toggleButton.innerHTML = `
+            <i class="fas fa-chevron-down"></i> Mostrar Comparação
+        `;
+        container.appendChild(toggleButton);
+
+        // Criar div para conteúdo da comparação
+        const comparacaoContent = document.createElement('div');
+        comparacaoContent.className = 'comparacao-content';
+        comparacaoContent.style.display = 'none';
+        container.appendChild(comparacaoContent);
+
+        // Adicionar evento de clique ao botão
+        toggleButton.addEventListener('click', () => {
+            const isVisible = comparacaoContent.style.display !== 'none';
+            comparacaoContent.style.display = isVisible ? 'none' : 'block';
+            toggleButton.innerHTML = `
+                <i class="fas fa-chevron-${isVisible ? 'down' : 'up'}"></i>
+                ${isVisible ? 'Mostrar' : 'Ocultar'} Comparação
+            `;
+        });
+
+        // Criar cards de comparação para cada sawing anterior
+        data.comparacoes.forEach((comparacao, index) => {
+            const card = document.createElement('div');
+            card.className = 'comparacao-card';
+            card.innerHTML = `
+                <div class="comparacao-header">
+                    <h4>Comparação com Sawing Aprovado</h4>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="label">Produto Atual</div>
+                            <div class="value">${new Date(dataRegistro).toLocaleDateString('pt-BR')}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">Último Aprovado</div>
+                            <div class="value">${new Date(comparacao.data_registro).toLocaleDateString('pt-BR')}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="tabela-comparacao">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Quantidade</th>
+                                <th>Último Aprovado | Fornecedor</th>
+                                <th>Atual Aprovado | Fornecedor</th>
+                                <th>Economia</th>
+                            </tr>
+                        </thead>
+                        <tbody id="comparacao-body-${index}">
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            comparacaoContent.appendChild(card);
+
+            // Preencher tabela de comparação
+            preencherTabelaComparacao(
+                data.produtos_atuais,
+                comparacao.produtos_anteriores,
+                `comparacao-body-${index}`
+            );
+        });
+
+    } catch (error) {
+        console.error('Erro ao carregar comparação:', error);
+        const container = document.getElementById('comparacao-container');
+        if (container) {
+            container.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i> Erro ao carregar comparação
+                </div>
+            `;
+        }
+    }
+}
+
+// Função para preencher a tabela de comparação
+function preencherTabelaComparacao(produtosAtuais, produtosAnteriores, containerId) {
+    const tbody = document.getElementById(containerId);
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    produtosAtuais.forEach(produtoAtual => {
+        const produtoAnterior = produtosAnteriores.find(p => p.descricao === produtoAtual.descricao);
+        if (produtoAnterior) {
+            const valorAtual = parseFloat(produtoAtual.valor_unitario_final);
+            const valorAnterior = parseFloat(produtoAnterior.valor_unitario_final);
+            const economia = valorAnterior - valorAtual;
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${produtoAtual.descricao}</td>
+                <td>${produtoAtual.quantidade}</td>
+                <td>
+                    <div class="valor-fornecedor">
+                        <span class="valor">R$ ${formatarNumero(valorAnterior)}</span>
+                        <span class="fornecedor">${produtoAnterior.fornecedor}</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="valor-fornecedor">
+                        <span class="valor">R$ ${formatarNumero(valorAtual)}</span>
+                        <span class="fornecedor">${produtoAtual.fornecedor}</span>
+                    </div>
+                </td>
+                <td class="${economia > 0 ? 'variacao-positiva' : 'variacao-negativa'}">
+                    R$ ${formatarNumero(economia)}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        }
+    });
 }
 
 // Função para ver detalhes de um registro
@@ -510,7 +818,7 @@ async function verDetalhes(id) {
         const dataAprovacao = data.data_aprovacao ? formatarData(data.data_aprovacao) : 'Não aprovado';
         document.getElementById('sawing-data-aprovacao').textContent = dataAprovacao;
             
-            // Formatar valores monetários
+        // Formatar valores monetários
         const valorInicial = parseFloat(data.valor_total_inicial || 0);
         const valorFinal = parseFloat(data.valor_total_final || 0);
         const economia = parseFloat(data.economia || 0);
@@ -559,6 +867,31 @@ async function verDetalhes(id) {
         } else if (status.toLowerCase() === 'em_andamento') {
             statusElement.classList.add('variacao-neutra');
         }
+
+        // Adicionar tipo de compra
+        const tipoElement = document.getElementById('sawing-tipo');
+        const tipo = data.tipo || 'programada';
+        const badgeClass = tipo === 'emergencial' ? 'badge-warning' : 'badge-info';
+        const badgeIcon = tipo === 'emergencial' ? 'fa-exclamation-circle' : 'fa-calendar';
+        const badgeText = tipo === 'emergencial' ? 'Emergencial' : 'Programada';
+        
+        tipoElement.innerHTML = `
+            <span class="badge ${badgeClass}">
+                <i class="fas ${badgeIcon}"></i>
+                ${badgeText}
+            </span>
+        `;
+
+        // Mostrar/ocultar justificativa emergencial
+        const justificativaContainer = document.getElementById('justificativa-emergencial-container');
+        const justificativaElement = document.getElementById('sawing-justificativa-emergencial');
+        
+        if (tipo === 'emergencial' && data.motivo_emergencial) {
+            justificativaElement.textContent = data.motivo_emergencial;
+            justificativaContainer.style.display = 'block';
+        } else {
+            justificativaContainer.style.display = 'none';
+        }
         
         document.getElementById('sawing-observacoes').textContent = data.observacoes || 'Nenhuma observação';
 
@@ -573,7 +906,12 @@ async function verDetalhes(id) {
             renderizarProdutos([]);
         }
 
-        // Mostrar o modal usando o estilo do modal_aprovacoes.css
+        // Carregar a comparação com o último sawing aprovado
+        if (data.id && data.data_registro) {
+            carregarComparacaoProdutos(data.id, data.data_registro);
+        }
+
+        // Mostrar o modal
         const modal = document.getElementById('modalDetalhesSawing');
         modal.style.display = 'block';
     } catch (error) {
@@ -884,6 +1222,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Função para aplicar filtros
 function aplicarFiltros() {
+    console.log('Aplicando filtros...');
+    const filtros = obterFiltros();
+    console.log('URL com filtros:', `api/sawing.php?pagina=1&limite=10${filtros}`);
     carregarDados(1); // Voltar para a primeira página ao aplicar filtros
 }
 
@@ -891,7 +1232,7 @@ function aplicarFiltros() {
 function limparFiltros() {
     // Limpar campos de filtro
     document.getElementById('filtro-comprador').value = '';
-    document.getElementById('filtro-status').value = '';
+    document.getElementById('filtro-tipo').value = '';
     document.getElementById('data-inicio').value = '';
     document.getElementById('data-fim').value = '';
     
@@ -1004,6 +1345,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Carregar dados ao carregar a página
 document.addEventListener('DOMContentLoaded', function() {
     carregarDados();
+    carregarCompradores();
     
     // Configurar eventos de filtro - verificar se os elementos existem
     const btnAplicarFiltros = document.getElementById('btn-aplicar-filtros');
@@ -1101,5 +1443,105 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
+// Função para carregar compradores
+function carregarCompradores() {
+    fetch('api/sawing.php?acao=listar_compradores')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.compradores) {
+                const select = document.getElementById('filtro-comprador');
+                if (select) {
+                    // Manter a opção "Todos"
+                    select.innerHTML = '<option value="">Todos</option>';
+                    
+                    // Adicionar os compradores
+                    data.compradores.forEach(comprador => {
+                        const option = document.createElement('option');
+                        option.value = comprador.id;
+                        option.textContent = comprador.nome;
+                        select.appendChild(option);
+                    });
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao carregar compradores:', error);
+        });
+}
+
+// Função para renderizar a comparação com último aprovado
+function renderizarComparacao(comparacao) {
+    const container = document.getElementById('comparacao-container');
+    if (!container) return;
+
+    // Agrupar produtos por data do último aprovado
+    const produtosAgrupados = {};
+    comparacao.forEach(item => {
+        const dataAprovacao = item.data_ultimo_aprovado;
+        if (!produtosAgrupados[dataAprovacao]) {
+            produtosAgrupados[dataAprovacao] = [];
+        }
+        produtosAgrupados[dataAprovacao].push(item);
+    });
+
+    let html = '';
+    
+    // Ordenar as datas em ordem decrescente
+    const datasOrdenadas = Object.keys(produtosAgrupados).sort((a, b) => new Date(b) - new Date(a));
+    
+    datasOrdenadas.forEach(dataAprovacao => {
+        const produtos = produtosAgrupados[dataAprovacao];
+        const dataFormatada = formatarData(dataAprovacao);
+        
+        html += `
+            <div class="comparacao-grupo">
+                <div class="comparacao-header">
+                    <h4>Comparação com Sawing Aprovado</h4>
+                    <div class="comparacao-datas">
+                        <div class="data-atual">
+                            <strong>Produto Atual:</strong> ${formatarData(produtos[0].data_atual)}
+                        </div>
+                        <div class="data-ultima">
+                            <strong>Último Aprovado:</strong> ${dataFormatada}
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Quantidade</th>
+                                <th>Último Aprovado</th>
+                                <th>Atual Aprovado</th>
+                                <th>Economia</th>
+                                <th>Fornecedor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${produtos.map(item => `
+                                <tr>
+                                    <td>${item.produto}</td>
+                                    <td>${item.quantidade}</td>
+                                    <td>${formatarMoeda(item.valor_ultimo_aprovado)}</td>
+                                    <td>${formatarMoeda(item.valor_atual)}</td>
+                                    <td class="${item.economia >= 0 ? 'variacao-positiva' : 'variacao-negativa'}">
+                                        ${formatarMoeda(item.economia)} (${item.percentual_economia}%)
+                                    </td>
+                                    <td>${item.fornecedor}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+
 
 

@@ -119,6 +119,16 @@ if (isset($_GET['id'])) {
     exit;
 }
 
+// Verificar se é uma solicitação de compradores
+if (isset($_GET['acao']) && $_GET['acao'] === 'listar_compradores') {
+    try {
+        listarCompradores($conn);
+    } catch (Exception $e) {
+        retornarErro('Erro ao listar compradores: ' . $e->getMessage());
+    }
+    exit;
+}
+
 // Caso contrário, listar registros
 try {
     listarRegistros($conn);
@@ -154,6 +164,11 @@ function listarRegistros($conn) {
             $paramsConsulta[] = $_GET['status'];
         }
         
+        if (isset($_GET['tipo']) && !empty($_GET['tipo'])) {
+            $filtros .= " AND s.tipo = ?";
+            $paramsConsulta[] = $_GET['tipo'];
+        }
+        
         if (isset($_GET['data_inicio']) && !empty($_GET['data_inicio'])) {
             $filtros .= " AND DATE(s.data_registro) >= ?";
             $paramsConsulta[] = $_GET['data_inicio'];
@@ -176,7 +191,7 @@ function listarRegistros($conn) {
         $stmtCount->execute($paramsConsulta);
         $totalRegistros = $stmtCount->fetchColumn();
         
-        // Executar consulta principal (sem adicionar LIMIT e OFFSET como parâmetros)
+        // Executar consulta principal
         $stmt = $conn->prepare($sql);
         $stmt->execute($paramsConsulta);
         $registros = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -184,7 +199,7 @@ function listarRegistros($conn) {
         // Calcular resumo
         $resumo = calcularResumo($conn, $paramsConsulta);
         
-        // Retornar resultado
+        // Retornar dados
         echo json_encode([
             'registros' => $registros,
             'total' => $totalRegistros,
@@ -192,12 +207,9 @@ function listarRegistros($conn) {
             'limite' => $limite,
             'resumo' => $resumo
         ]);
+        
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'erro' => true,
-            'mensagem' => "Erro ao listar registros: " . $e->getMessage()
-        ]);
+        retornarErro('Erro ao listar registros: ' . $e->getMessage());
     }
 }
 
@@ -389,6 +401,10 @@ function calcularResumo($conn, $params) {
             $sql .= " AND s.status = ?";
         }
         
+        if (isset($_GET['tipo']) && !empty($_GET['tipo'])) {
+            $sql .= " AND s.tipo = ?";
+        }
+        
         if (isset($_GET['data_inicio']) && !empty($_GET['data_inicio'])) {
             $sql .= " AND DATE(s.data_registro) >= ?";
         }
@@ -416,8 +432,16 @@ function calcularResumo($conn, $params) {
         ";
         
         // Aplicar os mesmos filtros
+        if (isset($_GET['comprador']) && !empty($_GET['comprador'])) {
+            $sqlCompradores .= " AND s.usuario_id = ?";
+        }
+        
         if (isset($_GET['status']) && !empty($_GET['status'])) {
             $sqlCompradores .= " AND s.status = ?";
+        }
+        
+        if (isset($_GET['tipo']) && !empty($_GET['tipo'])) {
+            $sqlCompradores .= " AND s.tipo = ?";
         }
         
         if (isset($_GET['data_inicio']) && !empty($_GET['data_inicio'])) {
@@ -428,36 +452,33 @@ function calcularResumo($conn, $params) {
             $sqlCompradores .= " AND DATE(s.data_registro) <= ?";
         }
         
-        $sqlCompradores .= " GROUP BY u.id, u.nome ORDER BY economia_total DESC";
+        $sqlCompradores .= " GROUP BY s.usuario_id, u.nome";
         
         $stmtCompradores = $conn->prepare($sqlCompradores);
         $stmtCompradores->execute($params);
         $compradores = $stmtCompradores->fetchAll(PDO::FETCH_ASSOC);
         
-        // Calcular os valores corretos
-        $resumo = [
+        // Calcular economia percentual média
+        $economiaPercentual = $dados['valor_inicial_total'] > 0 ? 
+            ($dados['economia_total'] / $dados['valor_inicial_total'] * 100) : 0;
+        
+        return [
             'economia_total' => $dados['economia_total'],
-            'economia_percentual' => $dados['valor_inicial_total'] > 0 ? 
-                ($dados['economia_total'] / $dados['valor_inicial_total'] * 100) : 0,
-            'total_rodadas' => $dados['total_rodadas'],
+            'economia_percentual' => $economiaPercentual,
             'total_negociado' => $dados['valor_inicial_total'],
             'total_aprovado' => $dados['valor_final_total'],
+            'total_rodadas' => $dados['total_rodadas'],
             'compradores' => $compradores
         ];
         
-        // Formatar valores
-        $resumo['economia_percentual'] = round($resumo['economia_percentual'], 2);
-        
-        return $resumo;
     } catch (Exception $e) {
         error_log("Erro ao calcular resumo: " . $e->getMessage());
-        // Retornar um resumo vazio em caso de erro
         return [
             'economia_total' => 0,
             'economia_percentual' => 0,
-            'total_rodadas' => 0,
             'total_negociado' => 0,
             'total_aprovado' => 0,
+            'total_rodadas' => 0,
             'compradores' => []
         ];
     }
@@ -657,4 +678,29 @@ function traduzirStatus($status) {
         'rejeitado' => 'Rejeitado'
     ];
     return $status_map[$status] ?? $status;
+}
+
+// Função para listar compradores
+function listarCompradores($conn) {
+    try {
+        $sql = "SELECT DISTINCT u.id, u.nome 
+                FROM usuarios u 
+                INNER JOIN sawing s ON u.id = s.usuario_id 
+                ORDER BY u.nome";
+        
+        $stmt = $conn->prepare($sql);
+        $stmt->execute();
+        $compradores = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'success' => true,
+            'compradores' => $compradores
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'mensagem' => "Erro ao listar compradores: " . $e->getMessage()
+        ]);
+    }
 }

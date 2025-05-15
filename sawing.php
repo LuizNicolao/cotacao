@@ -48,13 +48,11 @@ if (!userCan('sawing', 'visualizar')) {
                 </div>
 
                 <div class="filtro-grupo">
-                    <label for="filtro-status">Status:</label>
-                    <select id="filtro-status">
+                    <label for="filtro-tipo">Tipo:</label>
+                    <select id="filtro-tipo">
                         <option value="">Todos</option>
-                        <option value="pendente">Pendente</option>
-                        <option value="em_andamento">Em andamento</option>
-                        <option value="concluido">Concluído</option>
-                        <option value="cancelado">Cancelado</option>
+                        <option value="programada">Programada</option>
+                        <option value="emergencial">Emergencial</option>
                     </select>
                 </div>
 
@@ -107,6 +105,14 @@ if (!userCan('sawing', 'visualizar')) {
                         <div class="resumo-valor" id="total-aprovado">R$ 0,00</div>
                         <div class="resumo-label">Total Aprovado</div>
                     </div>
+                    <div class="resumo-card">
+                        <div class="resumo-valor" id="total-programada">0</div>
+                        <div class="resumo-label">Cotações Programadas</div>
+                    </div>
+                    <div class="resumo-card">
+                        <div class="resumo-valor" id="total-emergencial">0</div>
+                        <div class="resumo-label">Cotações Emergenciais</div>
+                    </div>
                 </div>
             </div>
 
@@ -137,7 +143,7 @@ if (!userCan('sawing', 'visualizar')) {
                         <th>Economia (R$)</th>
                         <th>Economia (%)</th>
                         <th>Rodadas</th>
-                        <th>Status</th>
+                        <th>Tipo</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
@@ -213,6 +219,16 @@ if (!userCan('sawing', 'visualizar')) {
                         <div class="label">Status</div>
                         <div class="value" id="sawing-status"></div>
                     </div>
+                    <div class="info-item">
+                        <div class="label">Tipo de Compra</div>
+                        <div class="value" id="sawing-tipo"></div>
+                    </div>
+                </div>
+
+                <!-- Justificativa Emergencial -->
+                <div class="info-cotacao" id="justificativa-emergencial-container" style="display: none;">
+                    <h4>Justificativa da Compra Emergencial</h4>
+                    <p id="sawing-justificativa-emergencial"></p>
                 </div>
 
                 <!-- Observações -->
@@ -226,6 +242,14 @@ if (!userCan('sawing', 'visualizar')) {
                     <h4>Produtos Negociados</h4>
                     <div id="produtos-container">
                         <!-- A tabela de produtos será inserida aqui via JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Comparação com Último Aprovado -->
+                <div class="produto-section">
+                    <h4>Comparação com Último Aprovado</h4>
+                    <div id="comparacao-container">
+                        <!-- A tabela de comparação será inserida aqui via JavaScript -->
                     </div>
                 </div>
             </div>

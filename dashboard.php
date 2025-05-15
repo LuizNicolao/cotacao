@@ -92,6 +92,38 @@ $conn = conectarDB();
                         <span class="number" id="renegociacao-count">0</span>
                     </div>
                 </div>
+
+                <div class="card">
+                    <i class="fas fa-dollar-sign"></i>
+                    <div class="card-info">
+                        <h3>Cotação do Dólar</h3>
+                        <span class="number" id="dolar-rate">R$ 0,00</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <i class="fas fa-gas-pump"></i>
+                    <div class="card-info">
+                        <h3>Preço do Diesel</h3>
+                        <span class="number" id="diesel-rate">R$ 0,00</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <i class="fas fa-calendar"></i>
+                    <div class="card-info">
+                        <h3>Cotações Programadas</h3>
+                        <span class="number" id="programadas-count">0</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <div class="card-info">
+                        <h3>Cotações Emergenciais</h3>
+                        <span class="number" id="emergenciais-count">0</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Estatísticas do Sawing -->
@@ -147,6 +179,7 @@ $conn = conectarDB();
                             <th>Data</th>
                             <th>Status</th>
                             <th>Comprador</th>
+                            <th>Tipo</th>
                             <th>Valor Total</th>
                             <th>Ações</th>
                         </tr>

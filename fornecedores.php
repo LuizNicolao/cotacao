@@ -3,44 +3,13 @@ session_start();
 require_once 'config/database.php';
 require_once 'includes/check_permissions.php';
 
-if (!isset($_SESSION['usuario']) || !userCan('fornecedores', 'visualizar')) {
-    header("Location: dashboard.php");
+// Verificar se o usuário tem permissão (admin ou gerencia)
+if (!in_array($_SESSION['usuario']['tipo'], ['admin', 'gerencia'])) {
+    header('Location: index.php');
     exit;
 }
 
-$conn = conectarDB();
-
-// Inicializar variáveis de filtro
-$busca = isset($_GET['busca']) ? $_GET['busca'] : '';
-$status = isset($_GET['status']) ? $_GET['status'] : '';
-
-// Construir a consulta SQL com filtros
-$query = "SELECT * FROM fornecedores WHERE 1=1";
-
-if (!empty($busca)) {
-    $query .= " AND (nome LIKE :busca OR cnpj LIKE :busca OR email LIKE :busca)";
-}
-
-if ($status !== '') {
-    $query .= " AND status = :status";
-}
-
-$query .= " ORDER BY nome";
-
-// Preparar e executar a consulta
-$stmt = $conn->prepare($query);
-
-if (!empty($busca)) {
-    $termo_busca = "%{$busca}%";
-    $stmt->bindParam(':busca', $termo_busca, PDO::PARAM_STR);
-}
-
-if ($status !== '') {
-    $stmt->bindParam(':status', $status, PDO::PARAM_INT);
-}
-
-$stmt->execute();
-$fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$pagina_atual = 'fornecedores';
 ?>
 
 <!DOCTYPE html>
@@ -50,225 +19,280 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fornecedores - Sistema de Cotações</title>
     <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="assets/css/fornecedores.css">
-    <style>
-        .filtros-container {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            align-items: flex-end;
-        }
-        
-        .filtro-grupo {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        
-        .filtro-grupo label {
-            font-weight: bold;
-            font-size: 0.9em;
-        }
-        
-        .filtro-grupo input,
-        .filtro-grupo select {
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            min-width: 200px;
-        }
-        
-        .btn-filtrar {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .btn-limpar {
-            background-color: #6c757d;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-        }
-        
-        .btn-filtrar:hover, .btn-limpar:hover {
-            opacity: 0.9;
-        }
-        
-        .resultados-info {
-            margin-bottom: 15px;
-            font-style: italic;
-            color: #6c757d;
-        }
-    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 <body>
-    <div class="dashboard-container">
-        <?php include 'includes/sidebar.php'; ?>
-        <div class="main-content">
-            <header class="top-bar">
-                <div class="welcome">
-                    <h2>Fornecedores</h2>
-                </div>
-                <div class="user-info">
-                    <i class="fas fa-user-circle"></i>
-                    <span><?php echo htmlspecialchars($_SESSION['usuario']['nome']); ?></span>
-                </div>
-            </header>
+    <?php include 'includes/sidebar.php'; ?>
 
-            <!-- Filtros de busca -->
-            <div class="filtros-container">
-                <form action="" method="GET" class="form-filtros">
-                    <div class="filtro-grupo">
-                        <label for="busca">Buscar por Nome, CNPJ ou Email:</label>
-                        <input type="text" id="busca" name="busca" value="<?php echo htmlspecialchars($busca); ?>" placeholder="Digite para buscar...">
-                    </div>
-                    
-                    <div class="filtro-grupo">
-                        <label for="status">Status:</label>
-                        <select id="status" name="status">
-                            <option value="">Todos</option>
-                            <option value="1" <?php echo $status === '1' ? 'selected' : ''; ?>>Ativo</option>
-                            <option value="0" <?php echo $status === '0' ? 'selected' : ''; ?>>Inativo</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filtro-acoes">
-                        <button type="submit" class="btn-filtrar">
-                            <i class="fas fa-search"></i> Filtrar
-                        </button>
-                        <a href="fornecedores.php" class="btn-limpar">Limpar</a>
-                    </div>
-                </form>
+    <div class="main-content">
+        <div class="header">
+            <h1>Análise de Fornecedores</h1>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filtros">
+            <div class="filtro-grupo">
+                <label for="filtro-fornecedor">Fornecedor:</label>
+                <select id="filtro-fornecedor">
+                    <option value="">Todos</option>
+                    <!-- Opções serão carregadas via JavaScript -->
+                </select>
             </div>
-            
-            <!-- Informações sobre os resultados -->
-            <div class="resultados-info">
-                <?php echo count($fornecedores); ?> fornecedor(es) encontrado(s)
-                <?php if (!empty($busca) || $status !== ''): ?>
-                    com os filtros aplicados
-                <?php endif; ?>
+
+            <div class="filtro-grupo">
+                <label for="filtro-produto">Produto:</label>
+                <select id="filtro-produto">
+                    <option value="">Todos</option>
+                    <!-- Opções serão carregadas via JavaScript -->
+                </select>
             </div>
-            <div>
-            <?php if(userCan('fornecedores', 'criar')): ?>
-            <button class="btn-adicionar">
-                <i class="fas fa-plus"></i> Novo Fornecedor
+
+            <div class="filtro-grupo">
+                <label for="data-inicio">Data Início:</label>
+                <input type="date" id="data-inicio" name="data_inicio">
+            </div>
+
+            <div class="filtro-grupo">
+                <label for="data-fim">Data Fim:</label>
+                <input type="date" id="data-fim" name="data_fim">
+            </div>
+
+            <button id="btn-filtros" class="btn-filtrar">
+                <i class="fas fa-filter"></i> Filtros
             </button>
-            <?php endif; ?>
-            </div>
 
-            <div class="content">
-                <table>
+            <button id="btn-aplicar-filtros" class="btn-aplicar">
+                <i class="fas fa-check"></i> Aplicar
+            </button>
+
+            <button id="btn-limpar-filtros" class="btn-limpar">
+                <i class="fas fa-eraser"></i> Limpar
+            </button>
+
+          <!--  <button id="btn-exportar" class="btn-exportar">
+                <i class="fas fa-file-excel"></i> Exportar
+            </button> -->
+        </div>
+
+        <!-- Cards de Resumo -->
+        <div class="dashboard-cards">
+            <div class="card">
+                <i class="fas fa-truck"></i>
+                <h3>Total de Fornecedores</h3>
+                <span class="number" id="total-fornecedores">0</span>
+            </div>
+            <div class="card">
+                <i class="fas fa-shopping-cart"></i>
+                <h3>Total de Compras</h3>
+                <span class="number" id="total-compras">R$ 0,00</span>
+            </div>
+            <div class="card">
+                <i class="fas fa-box"></i>
+                <h3>Produtos Únicos</h3>
+                <span class="number" id="total-produtos">0</span>
+            </div>
+            <div class="card">
+                <i class="fas fa-clock"></i>
+                <h3>Prazo Médio</h3>
+                <span class="number" id="prazo-medio">0 dias</span>
+            </div>
+        </div>
+
+        <!-- Tabela de Fornecedores -->
+        <div class="table-section">
+            <div class="table-header">
+                <h2>Fornecedores</h2>
+            </div>
+            <div class="table-responsive">
+                <table class="tabela-fornecedores">
                     <thead>
                         <tr>
-                            <th>Nome</th>
-                            <th>CNPJ</th>
-                            <th>Email</th>
-                            <th>Telefone</th>
-                            <th>Status</th>
+                            <th>Fornecedor</th>
+                            <th>Total Compras</th>
+                            <th>Produtos Únicos</th>
+                            <th>Prazo Médio</th>
+                            <th>Economia Total</th>
+                            <th>Última Compra</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <?php if (count($fornecedores) > 0): ?>
-                            <?php foreach ($fornecedores as $fornecedor): ?>
-                            <tr>
-                                <td><?php echo htmlspecialchars($fornecedor['nome']); ?></td>
-                                <td><?php echo htmlspecialchars($fornecedor['cnpj']); ?></td>
-                                <td><?php echo htmlspecialchars($fornecedor['email']); ?></td>
-                                <td><?php echo htmlspecialchars($fornecedor['telefone']); ?></td>
-                                <td>
-                                    <span class="status-badge <?php echo $fornecedor['status'] ? 'ativo' : 'inativo'; ?>">
-                                        <?php echo $fornecedor['status'] ? 'Ativo' : 'Inativo'; ?>
-                                    </span>
-                                </td>
-                                <td class="acoes">
-                                    <?php if(userCan('fornecedores', 'editar')): ?>
-                                    <button class="btn-acao btn-editar" onclick="editarFornecedor(<?php echo $fornecedor['id']; ?>)">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <?php endif; ?>
-                                    
-                                    <?php if(userCan('fornecedores', 'excluir')): ?>
-                                    <button class="btn-acao btn-excluir" onclick="excluirFornecedor(<?php echo $fornecedor['id']; ?>)">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="6" style="text-align: center;">Nenhum fornecedor encontrado</td>
-                            </tr>
-                        <?php endif; ?>
+                    <tbody id="tabela-fornecedores-body">
+                        <tr>
+                            <td colspan="7" class="text-center">
+                                <i class="fas fa-spinner fa-spin"></i> Carregando dados...
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
+            </div>
+            <div id="paginacao" class="pagination-container"></div>
+        </div>
+    </div>
+
+    <!-- Modal de Detalhes -->
+    <div class="modal" id="modalDetalhes">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title"></h2>
+                <button type="button" class="close" onclick="document.getElementById('modalDetalhes').style.display='none'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Resumo do Fornecedor -->
+                <div class="fornecedor-resumo">
+                    <div class="resumo-card">
+                        <div class="resumo-titulo">Total de Compras</div>
+                        <div class="resumo-valor" id="resumo-total-compras">0</div>
+                    </div>
+                    <div class="resumo-card">
+                        <div class="resumo-titulo">Valor Médio</div>
+                        <div class="resumo-valor" id="resumo-valor-medio">R$ 0,00</div>
+                    </div>
+                    <div class="resumo-card">
+                        <div class="resumo-titulo">Economia Total</div>
+                        <div class="resumo-valor" id="resumo-economia">R$ 0,00</div>
+                    </div>
+                    <div class="resumo-card">
+                        <div class="resumo-titulo">Participação no Mercado</div>
+                        <div class="resumo-valor" id="resumo-participacao">0%</div>
+                    </div>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="mudarTab('produtos')">Produtos</button>
+                    <button class="tab-btn" onclick="mudarTab('historico')">Histórico</button>
+                    <button class="tab-btn" onclick="mudarTab('metricas')">Métricas</button>
+                    <button class="tab-btn" onclick="mudarTab('comparativo')">Comparativo</button>
+                </div>
+                
+                <div class="tab-content" id="tabProdutos">
+                    <div class="table-filters">
+                        <div class="search-box">
+                            <input type="text" id="search-produto" placeholder="Buscar produto...">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <div class="filter-box">
+                            <select id="filter-ordem-produtos">
+                                <option value="quantidade">Mais Comprados</option>
+                                <option value="economia">Maior Economia</option>
+                                <option value="preco">Menor Preço</option>
+                            </select>
+                        </div>
+                    </div>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Quantidade Total</th>
+                                <th>Preço Médio</th>
+                                <th>Menor Preço</th>
+                                <th>Maior Preço</th>
+                                <th>Economia</th>
+                                <th>Última Compra</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                
+                <div class="tab-content" id="tabHistorico" style="display: none;">
+                    <div class="table-filters">
+                        <div class="date-range">
+                            <input type="date" id="historico-data-inicio">
+                            <span>até</span>
+                            <input type="date" id="historico-data-fim">
+                        </div>
+                    </div>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Produto</th>
+                                <th>Quantidade</th>
+                                <th>Valor Unitário</th>
+                                <th>Valor Total</th>
+                                <th>Economia</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                
+                <div class="tab-content" id="tabMetricas" style="display: none;">
+                    <div class="metricas-grid">
+                        <div class="metrica-card">
+                            <div class="metrica-titulo">Economia Total</div>
+                            <div class="metrica-valor" data-metrica="economia">R$ 0,00</div>
+                            <div class="metrica-trend" data-trend="economia">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>0%</span>
+                            </div>
+                        </div>
+                        <div class="metrica-card">
+                            <div class="metrica-titulo">Produtos Mais Comprados</div>
+                            <div class="metrica-valor" data-metrica="produtos-top">Nenhum produto</div>
+                        </div>
+                        <div class="metrica-card">
+                            <div class="metrica-titulo">Melhor Prazo</div>
+                            <div class="metrica-valor" data-metrica="melhor-prazo">N/A</div>
+                        </div>
+                        <div class="metrica-card">
+                            <div class="metrica-titulo">Preço Médio</div>
+                            <div class="metrica-valor" data-metrica="preco-medio">R$ 0,00</div>
+                            <div class="metrica-trend" data-trend="preco">
+                                <i class="fas fa-arrow-down"></i>
+                                <span>0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tabComparativo" style="display: none;">
+                    <div class="comparativo-section">
+                        <h3>Comparativo com Outros Fornecedores</h3>
+                        <div class="comparativo-grid">
+                            <div class="comparativo-card">
+                                <div class="comparativo-titulo">Ranking de Preços</div>
+                                <div class="comparativo-valor" id="ranking-precos">-</div>
+                                <div class="comparativo-desc">Posição entre todos os fornecedores</div>
+                            </div>
+                            <div class="comparativo-card">
+                                <div class="comparativo-titulo">Ranking de Economia</div>
+                                <div class="comparativo-valor" id="ranking-economia">-</div>
+                                <div class="comparativo-desc">Posição entre todos os fornecedores</div>
+                            </div>
+                            <div class="comparativo-card">
+                                <div class="comparativo-titulo">Produtos Exclusivos</div>
+                                <div class="comparativo-valor" id="produtos-exclusivos">0</div>
+                                <div class="comparativo-desc">Produtos únicos deste fornecedor</div>
+                            </div>
+                            <div class="comparativo-card">
+                                <div class="comparativo-titulo">Participação de Mercado</div>
+                                <div class="comparativo-valor" id="participacao-mercado">0%</div>
+                                <div class="comparativo-desc">Porcentagem do total de compras</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="comparativo-charts">
+                        <div class="chart-container">
+                            <h4>Evolução de Preços</h4>
+                            <canvas id="precos-chart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <h4>Distribuição de Produtos</h4>
+                            <canvas id="produtos-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal Fornecedor -->
-    <div id="modalFornecedor" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h3>Fornecedor</h3>
-            <form id="formFornecedor">
-                <input type="hidden" id="fornecedorId">
-                <div class="form-group">
-                    <label>Nome:</label>
-                    <input type="text" id="nome" required>
-                </div>
-                <div class="form-group">
-                    <label>CNPJ:</label>
-                    <input type="text" id="cnpj" required>
-                </div>
-                <div class="form-group">
-                    <label>Email:</label>
-                    <input type="email" id="email" required>
-                </div>
-                <div class="form-group">
-                    <label>Telefone:</label>
-                    <input type="text" id="telefone" required>
-                </div>
-                <div class="form-group">
-                    <label>Status:</label>
-                    <select id="status">
-                        <option value="1">Ativo</option>
-                        <option value="0">Inativo</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn-salvar">
-                    <i class="fas fa-save"></i> Salvar
-                </button>
-            </form>
-        </div>
-    </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+    <!-- Scripts -->
     <script src="assets/js/fornecedores.js"></script>
-    <script>
-        // Adicionar máscara para CNPJ quando o documento estiver pronto
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof $ !== 'undefined' && $.fn.mask) {
-                $('#cnpj').mask('00.000.000/0000-00');
-                $('#telefone').mask('(00) 00000-0000');
-            }
-        });
-    </script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>

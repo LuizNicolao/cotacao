@@ -14,7 +14,9 @@ try {
         'pendentes' => 0,
         'aprovadas' => 0,
         'rejeitadas' => 0,
-        'renegociacao' => 0
+        'renegociacao' => 0,
+        'programadas' => 0,
+        'emergenciais' => 0
     ];
 
     // Buscar contagem por status
@@ -34,8 +36,22 @@ try {
         }
     }
 
+    // Buscar contagem por tipo
+    $query = "SELECT tipo, COUNT(*) as total FROM cotacoes GROUP BY tipo";
+    $result = $conn->query($query);
+    
+    while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+        $tipo = $row['tipo'];
+        if ($tipo == 'programada') {
+            $stats['programadas'] = (int)$row['total'];
+        } else if ($tipo == 'emergencial') {
+            $stats['emergenciais'] = (int)$row['total'];
+        }
+    }
+
     // Buscar cotações recentes
-    $query = "SELECT c.*, u.nome as usuario_nome 
+    $query = "SELECT c.*, u.nome as usuario_nome,
+              (SELECT SUM(valor_total) FROM itens_cotacao WHERE cotacao_id = c.id) as valor_total
               FROM cotacoes c 
               JOIN usuarios u ON c.usuario_id = u.id 
               ORDER BY c.data_criacao DESC 

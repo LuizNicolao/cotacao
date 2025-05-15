@@ -22,6 +22,9 @@ function atualizarDashboard() {
             }
         })
         .catch(error => console.error('Erro ao atualizar dashboard:', error));
+
+    // Atualizar cotação do dólar e preço do diesel
+    atualizarTaxas();
 }
 
 function atualizarCards(stats) {
@@ -29,6 +32,8 @@ function atualizarCards(stats) {
     document.getElementById('aprovadas-count').textContent = stats.aprovadas;
     document.getElementById('rejeitadas-count').textContent = stats.rejeitadas;
     document.getElementById('renegociacao-count').textContent = stats.renegociacao;
+    document.getElementById('programadas-count').textContent = stats.programadas || 0;
+    document.getElementById('emergenciais-count').textContent = stats.emergenciais || 0;
 }
 
 function atualizarSawingStats(stats) {
@@ -108,6 +113,12 @@ function atualizarCotacoesRecentes(recentes) {
                 </span>
             </td>
             <td>${cotacao.usuario_nome}</td>
+            <td>
+                <span class="badge ${cotacao.tipo === 'emergencial' ? 'badge-warning' : 'badge-info'}">
+                    <i class="fas ${cotacao.tipo === 'emergencial' ? 'fa-exclamation-circle' : 'fa-calendar'}"></i>
+                    ${cotacao.tipo === 'emergencial' ? 'Emergencial' : 'Programada'}
+                </span>
+            </td>
             <td>${formatarMoeda(cotacao.valor_total || 0)}</td>
             <td class="acoes">
                 <button onclick="visualizarCotacao(${cotacao.id}, '${cotacao.status}')" class="btn-acao btn-visualizar">
@@ -143,10 +154,58 @@ function traduzirStatus(status) {
 
 function visualizarCotacao(id, status) {
     // Criar URL com os parâmetros de filtro
-    const url = new URL('cotacao/aprovacoes.php', window.location.origin);
+    const url = new URL('cotacaoluiz/aprovacoes.php', window.location.origin);
     url.searchParams.append('cotacao_id', id);
     url.searchParams.append('status', status);
     
     // Redirecionar para a página de aprovações com os filtros
     window.location.href = url.toString();
 }
+
+// Função para atualizar a cotação do dólar
+async function atualizarCotacaoDolar() {
+    try {
+        const response = await fetch('api/dolar_rate.php');
+        const data = await response.json();
+        
+        if (data.success) {
+            const dolarElement = document.getElementById('dolar-rate');
+            if (dolarElement) {
+                dolarElement.textContent = `R$ ${parseFloat(data.rate).toFixed(2)}`;
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar cotação do dólar:', error);
+    }
+}
+
+// Função para atualizar o preço do diesel
+async function atualizarPrecoDiesel() {
+    try {
+        const response = await fetch('api/diesel_rate.php');
+        const data = await response.json();
+        
+        if (data.success) {
+            const dieselElement = document.getElementById('diesel-rate');
+            if (dieselElement) {
+                dieselElement.textContent = `R$ ${parseFloat(data.rate).toFixed(2)}`;
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar preço do diesel:', error);
+    }
+}
+
+// Função para atualizar todas as taxas
+function atualizarTaxas() {
+    atualizarCotacaoDolar();
+    atualizarPrecoDiesel();
+}
+
+// Atualizar imediatamente ao carregar a página
+document.addEventListener('DOMContentLoaded', function() {
+    atualizarTaxas();
+    
+    // Atualizar a cada 5 minutos (300000 ms)
+    setInterval(atualizarTaxas, 300000);
+});

@@ -17,6 +17,7 @@ function userCan($modulo, $acao) {
             'dashboard' => ['visualizar'],
             'aprovacoes' => ['visualizar', 'aprovar', 'rejeitar'],
             'sawing' => ['visualizar'],
+            
         ],
         'comprador' => [
             'cotacoes' => ['visualizar', 'criar', 'editar', 'excluir'],

@@ -64,6 +64,40 @@ $cotacoes = $conn->query($query)->fetchAll(PDO::FETCH_ASSOC);
 
             <div id="notification-container" class="notification-container"></div>
 
+            <div class="dashboard-cards">
+                <div class="card">
+                    <i class="fas fa-file-invoice"></i>
+                    <div class="card-info">
+                        <h3>Cotações Aguardando Aprovação</h3>
+                        <span class="number" id="aguardando-aprovacao-count">0</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <i class="fas fa-check-circle"></i>
+                    <div class="card-info">
+                        <h3>Cotações Aprovadas</h3>
+                        <span class="number" id="aprovadas-count">0</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <i class="fas fa-times-circle"></i>
+                    <div class="card-info">
+                        <h3>Cotações Rejeitadas</h3>
+                        <span class="number" id="rejeitadas-count">0</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <i class="fas fa-sync-alt"></i>
+                    <div class="card-info">
+                        <h3>Cotações em Renegociação</h3>
+                        <span class="number" id="renegociacao-count">0</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="filtros">
                 <div class="filtro-grupo">
                     <label>Status:</label>
@@ -110,6 +144,7 @@ $cotacoes = $conn->query($query)->fetchAll(PDO::FETCH_ASSOC);
                         <th>Data Criação</th>
                         <th>Comprador</th>
                         <th>Total Itens</th>
+                        <th>Tipo</th>
                         <th>Status</th>
                         <th>Ações</th>
                     </tr>
@@ -121,6 +156,12 @@ $cotacoes = $conn->query($query)->fetchAll(PDO::FETCH_ASSOC);
                         <td><?php echo date('d/m/Y', strtotime($cotacao['data_criacao'])); ?></td>
                         <td><?php echo htmlspecialchars($cotacao['usuario_nome']); ?></td>
                         <td><?php echo $cotacao['total_itens']; ?></td>
+                        <td>
+                            <span class="tipo-badge <?php echo $cotacao['tipo'] === 'emergencial' ? 'emergencial' : 'programada'; ?>">
+                                <i class="fas <?php echo $cotacao['tipo'] === 'emergencial' ? 'fa-exclamation-circle' : 'fa-calendar'; ?>"></i>
+                                <?php echo $cotacao['tipo'] === 'emergencial' ? 'Emergencial' : 'Programada'; ?>
+                            </span>
+                        </td>
                         <td>
                             <span class="status-badge <?php echo $cotacao['status']; ?>">
                                 <?php 
@@ -152,6 +193,55 @@ $cotacoes = $conn->query($query)->fetchAll(PDO::FETCH_ASSOC);
     <script src="assets/js/notifications.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Função para atualizar os contadores dos cards
+        function atualizarContadoresCards() {
+            const rows = document.querySelectorAll('#tabela-cotacoes tbody tr');
+            const contadores = {
+                'aguardando_aprovacao': 0,
+                'aprovado': 0,
+                'rejeitado': 0,
+                'renegociacao': 0
+            };
+
+            rows.forEach(row => {
+                const status = row.getAttribute('data-status');
+                if (contadores.hasOwnProperty(status)) {
+                    contadores[status]++;
+                }
+            });
+
+            // Atualizar os elementos na página
+            document.getElementById('aguardando-aprovacao-count').textContent = contadores['aguardando_aprovacao'];
+            document.getElementById('aprovadas-count').textContent = contadores['aprovado'];
+            document.getElementById('rejeitadas-count').textContent = contadores['rejeitado'];
+            document.getElementById('renegociacao-count').textContent = contadores['renegociacao'];
+        }
+
+        // Adicionar eventos de clique aos cards
+        const cards = document.querySelectorAll('.dashboard-cards .card');
+        cards.forEach((card, index) => {
+            card.style.cursor = 'pointer';
+            card.addEventListener('click', function() {
+                const statusMap = {
+                    0: 'aguardando_aprovacao',
+                    1: 'aprovado',
+                    2: 'rejeitado',
+                    3: 'renegociacao'
+                };
+                
+                const status = statusMap[index];
+                document.getElementById('filtro-status').value = status;
+                filtrarCotacoes();
+                
+                // Adicionar classe de destaque ao card clicado
+                cards.forEach(c => c.classList.remove('card-active'));
+                card.classList.add('card-active');
+            });
+        });
+
+        // Chamar a função quando a página carregar
+        atualizarContadoresCards();
+
         // Configurar filtros
         const btnFiltrar = document.getElementById('btn-filtrar');
         const btnLimpar = document.getElementById('btn-limpar');
@@ -159,12 +249,22 @@ $cotacoes = $conn->query($query)->fetchAll(PDO::FETCH_ASSOC);
         if (btnFiltrar) {
             btnFiltrar.addEventListener('click', function() {
                 filtrarCotacoes();
+                atualizarContadoresCards();
+                // Remover destaque dos cards ao usar o botão filtrar
+                document.querySelectorAll('.dashboard-cards .card').forEach(card => {
+                    card.classList.remove('card-active');
+                });
             });
         }
 
         if (btnLimpar) {
             btnLimpar.addEventListener('click', function() {
                 limparFiltros();
+                atualizarContadoresCards();
+                // Remover destaque dos cards ao limpar filtros
+                document.querySelectorAll('.dashboard-cards .card').forEach(card => {
+                    card.classList.remove('card-active');
+                });
             });
         }
 

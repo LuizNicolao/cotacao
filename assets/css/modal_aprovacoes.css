@@ -1028,9 +1028,7 @@
 
 /* Variação negativa (preço diminuiu) */
 .variacao-negativa {
-    color: #fff;
-    background-color: rgba(46, 204, 113, 0.8);
-    border-left: 3px solid #27ae60;
+    color: #28a745;
     padding-left: 8px;
 }
 
@@ -1105,4 +1103,29 @@
     font-size: 12px;
     color: #7f8c8d;
     margin-top: 5px;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.badge i {
+    margin-right: 4px;
+}
+
+.badge-warning {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+.badge-info {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
 }

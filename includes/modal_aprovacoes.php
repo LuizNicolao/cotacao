@@ -61,19 +61,45 @@
     </div>
 </div>
 
+<!-- Nova seção de lista de produtos únicos -->
+<div class="lista-produtos-unicos">
+    <div class="lista-produtos-header">
+        <h4>Lista de Produtos</h4>
+        <button class="btn-toggle-lista" onclick="toggleListaProdutos()">
+            <i class="fas fa-chevron-down"></i>
+        </button>
+    </div>
+    <div class="tabela-produtos" style="display: none;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Produto</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="lista-produtos-body">
+                <!-- Dados serão inseridos via JavaScript -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <!-- Botões de alternância -->
 <div class="visualizacoes-toggle" style="display: flex; justify-content: center;">
 <button id="btn-visualizacao-padrao" class="btn-view active" onclick="forcarVisualizacao('visualizacao-padrao')">
-    <i class="fas fa-list"></i> Visualização Padrão
+    <i class="fas fa-list"></i> Visualização Padrão
+</button>
+<button id="btn-visualizacao-resumo" class="btn-view" onclick="forcarVisualizacao('visualizacao-resumo')">
+    <i class="fas fa-chart-bar"></i> Resumo Comparativo
 </button>
 <button id="btn-visualizacao-melhor-preco" class="btn-view" onclick="forcarVisualizacao('visualizacao-melhor-preco')">
-    <i class="fas fa-tag"></i> Melhor Preço
+    <i class="fas fa-tag"></i> Melhor Preço
 </button>
 <button id="btn-visualizacao-melhor-entrega" class="btn-view" onclick="forcarVisualizacao('visualizacao-melhor-entrega')">
-    <i class="fas fa-truck"></i> Melhor Prazo de Entrega
+    <i class="fas fa-truck"></i> Melhor Prazo de Entrega
 </button>
 <button id="btn-visualizacao-melhor-pagamento" class="btn-view" onclick="forcarVisualizacao('visualizacao-melhor-pagamento')">
-    <i class="fas fa-credit-card"></i> Melhor Prazo de Pagamento
+    <i class="fas fa-credit-card"></i> Melhor Prazo de Pagamento
 </button>
 </div>
 
@@ -82,10 +108,8 @@
 <div class="view-content">
     <!-- Visualização padrão (atual) -->
     <div id="visualizacao-padrao" class="visualizacao-container">
-        <div class="historico-versoes">
-            <h4>Histórico de Versões</h4>
+        
             <div class="versoes-list"></div>
-        </div>
         
         <div class="detalhes-cotacao">
             <div class="resumo-geral">
@@ -102,8 +126,9 @@
                             <th>Valor Unit.</th>
                             <th>Valor Unit. + Difal/Frete</th>
                             <th>Total</th>
-                            <th>Variação %</th>
-                            <th>Variação R$</th>
+                            <th>Vlr Total Ult Aprv</th>
+                            <th>Variação % Total</th>
+                            <th>Variação R$ Total</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -113,6 +138,41 @@
             </div>
         </div>
     </div>
+    <!-- Nova visualização: Resumo Comparativo -->
+    <div id="visualizacao-resumo" class="visualizacao-container" style="display: none;">
+        <div class="detalhes-cotacao">
+            <h3>Resumo Comparativo</h3>
+            <div class="tabela-resumo">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th>Qtd</th>
+                            <th>Un</th>
+                            <th colspan="2">Melhor Preço</th>
+                            <th colspan="2">Melhor Prazo Entrega</th>
+                            <th colspan="2">Melhor Prazo Pagamento</th>
+                        </tr>
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th>Valor</th>
+                            <th>Fornecedor</th>
+                            <th>Prazo</th>
+                            <th>Fornecedor</th>
+                            <th>Prazo</th>
+                            <th>Fornecedor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-resumo-body">
+                        <!-- Dados dinâmicos aqui -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- Nova visualização: Melhor Preço -->
 <div id="visualizacao-melhor-preco" class="visualizacao-container" style="display: none;">
     <div class="detalhes-cotacao">
@@ -127,9 +187,7 @@
                         <th>Un</th>
                         <th>Valor Unitário</th>
                         <th>Prazo Entrega</th>
-                        <th>Melhor Prz Entrg | Fornecedor</th>
                         <th>Prazo Pagamento</th>
-                        <th>Melhor Prz Pg | Fornecedor</th>
                     </tr>
                 </thead>
                 <tbody id="tabela-melhor-preco-body">
@@ -322,20 +380,33 @@ function analisarCotacao(id) {
     console.log('Iniciando análise da cotação:', id);
     
     Promise.all([
-        fetch(`api/cotacoes.php?id=${id}`).then(response => {
-            if (!response.ok) throw new Error('Erro ao buscar dados da cotação');
-            return response.json();
-        }),
-        fetch(`api/cotacoes.php?id=${id}&versoes=true`).then(response => {
-            if (!response.ok) throw new Error('Erro ao buscar versões da cotação');
-            return response.json();
-        })
+        fetch(`api/cotacoes.php?id=${id}`),
+        fetch(`api/cotacoes.php?acao=versoes&id=${id}`)
     ])
+    .then(responses => Promise.all(responses.map(r => r.json())))
     .then(([data, versoesData]) => {
-        console.log('Dados completos da cotação:', data);
-        console.log('Dados completos das versões:', versoesData);
+        console.log('Dados recebidos:', data);
+        console.log('Versões recebidas:', versoesData);
+        
+        // Armazenar dados para uso posterior
         cotacaoData = data;
-
+        currentCotacaoId = id;
+        
+        // Atualizar informações básicas
+        document.getElementById('info-cotacao').innerHTML = `
+            <p><strong>ID:</strong> ${data.id}</p>
+            <p><strong>Comprador:</strong> ${data.usuario_nome}</p>
+            <p><strong>Data Criação:</strong> ${formatarData(data.data_criacao)}</p>
+            <p class="data-aprovacao"><strong>Data Aprovação/Rejeição:</strong> ${data.data_aprovacao ? formatarData(data.data_aprovacao) : 'Pendente'}</p>
+            <p><strong>Status:</strong> <span class="status-badge ${data.status}">${traduzirStatus(data.status)}</span></p>
+            <p><strong>Rodadas:</strong> <span class="rodadas-badge">${data.numero_rodadas || 1}</span></p>
+            <p><strong>Tipo:</strong> ${data.tipo === 'emergencial' ? 
+                `<span class="badge badge-warning"><i class="fas fa-exclamation-circle"></i> Emergencial</span>` : 
+                `<span class="badge badge-info"><i class="fas fa-calendar"></i> Programada</span>`}</p>
+            ${data.tipo === 'emergencial' && data.motivo_emergencial ? 
+                `<p><strong>Motivo Emergencial:</strong> ${data.motivo_emergencial}</p>` : ''}
+        `;
+        
         // Obter o número da versão atual (que representa o número de rodadas)
         let numeroRodadas = 1; // Valor padrão
 
@@ -361,17 +432,6 @@ function analisarCotacao(id) {
 
     console.log('Número final de rodadas:', numeroRodadas);
         
-        // Preencher informações básicas
-        document.getElementById('info-cotacao').innerHTML = `
-            <p><strong>ID:</strong> ${data.id}</p>
-            <p><strong>Comprador:</strong> ${data.usuario_nome}</p>
-            <p><strong>Data Criação:</strong> ${formatarData(data.data_criacao)}</p>
-            <p class="data-aprovacao"><strong>Data Aprovação/Rejeição:</strong> ${data.data_aprovacao ? formatarData(data.data_aprovacao) : 'Pendente'}</p>
-            <p><strong>Status:</strong> <span
-             class="status-badge ${data.status}">${traduzirStatus(data.status)}</span></p>
-            <p><strong>Rodadas:</strong> <span class="rodadas-badge">${data.numero_rodadas || 1}</span></p>
-        `;
-
         // Atualizar o resumo do orçamento
         atualizarResumoOrcamento(data);
         
@@ -450,6 +510,11 @@ function renderizarItensCotacao(itens) {
             <td>${item.total ? 'R$ ' + formatarNumero(item.total) : '-'}</td>
             <td>${item.variacao_percentual ? formatarNumero(item.variacao_percentual) + '%' : '-'}</td>
             <td>${item.variacao_reais ? 'R$ ' + formatarNumero(item.variacao_reais) : '-'}</td>
+            <td>
+                <button class="btn-acao btn-visualizar" onclick="verDetalhesProduto('${item.produto_id}', '${item.fornecedor_nome}')" title="Ver detalhes">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </td>
         `;
         tbody.appendChild(tr);
     });
@@ -734,13 +799,19 @@ function renderizarComparativo(versaoAtual, versaoAnterior) {
                             if (itemAtual.ultimo_valor_aprovado && parseFloat(itemAtual.ultimo_valor_aprovado) > 0) {
                                 const valorAtual = parseFloat(itemAtual.valor_unitario);
                                 const ultimoValorAprovado = parseFloat(itemAtual.ultimo_valor_aprovado);
-                                variacao = ((valorAtual - ultimoValorAprovado) / ultimoValorAprovado) * 100;
-                                const variacaoValor = valorAtual - ultimoValorAprovado;
+                                
+                                // Calcular valores totais considerando a quantidade
+                                const valorTotalAtual = valorAtual * quantidade;
+                                const valorTotalUltimo = ultimoValorAprovado * quantidade;
+                                
+                                // Calcular variação percentual
+                                variacao = ((valorTotalAtual - valorTotalUltimo) / valorTotalUltimo) * 100;
+                                const variacaoValor = valorTotalAtual - valorTotalUltimo;
 
                                 if (variacao > 0) {
                                     variacaoClass = 'variacao-positiva';
                                     variacaoTexto = `+${variacao.toFixed(2)}%`;
-                                    variacaoReais = `+R$ ${formatarNumero(variacaoValor)}`;
+                                    variacaoReais = `+R$ ${formatarNumero(Math.abs(variacaoValor))}`;
                                 } else if (variacao < 0) {
                                     variacaoClass = 'variacao-negativa';
                                     variacaoTexto = `${variacao.toFixed(2)}%`;
@@ -796,7 +867,7 @@ function renderizarItensCotacaoParaRenegociacao(data) {
     }
 
     if (!itensParaExibir || itensParaExibir.length === 0) {
-        container.innerHTML = '<tr><td colspan="7" class="text-center">Nenhum item aprovado para exibição</td></tr>';
+        container.innerHTML = '<tr><td colspan="10" class="text-center">Nenhum item aprovado para exibição</td></tr>';
         return;
     }
 
@@ -829,15 +900,17 @@ function renderizarItensCotacaoParaRenegociacao(data) {
             itens: itens
         };
 
+        // Calcular valor total do fornecedor incluindo DIFAL e frete
         const valorTotal = itens.reduce((total, item) => {
-            const baseValue = item.quantidade * item.valor_unitario;
-            const difalValue = baseValue * (item.difal / 100);
-            return total + baseValue + difalValue;
-        }, 0) + parseFloat(itens[0].frete || 0);
+            const quantidade = parseFloat(item.quantidade) || 0;
+            const valorUnitario = parseFloat(item.valor_unitario) || 0;
+            const valorUnitarioComDifalEFrete = calcularValorUnitarioComDifalEFrete(item, fornecedorObj);
+            return total + (quantidade * valorUnitarioComDifalEFrete);
+        }, 0);
 
         html += `
             <tr class="fornecedor-header">
-                <td colspan="7">
+                <td colspan="9">
                     <h4>${fornecedorNome}</h4>
                     <div class="fornecedor-detalhes-linha">
                         <span><strong>Pagamento:</strong> ${itens[0].prazo_pagamento || 'N/A'}</span>
@@ -851,24 +924,17 @@ function renderizarItensCotacaoParaRenegociacao(data) {
         `;
 
         itens.forEach(item => {
-            const valorItemTotal = item.quantidade * item.valor_unitario;
+            const quantidade = parseFloat(item.quantidade) || 0;
+            const valorUnitario = parseFloat(item.valor_unitario) || 0;
+            const valorUnitarioComDifalEFrete = calcularValorUnitarioComDifalEFrete(item, fornecedorObj);
+            const valorItemTotal = quantidade * valorUnitarioComDifalEFrete;
+
             const produtoId = String(item.produto_id || item.produto_codigo || '');
             const fornecedorNomeStr = String(item.fornecedor_nome);
             const key1 = `${produtoId}_${fornecedorNomeStr}`;
             const key2 = `${produtoId}`;
             const estaMarcado = produtosRenegociar[key1] || produtosRenegociar[key2] ? 'checked' : '';
             const classeAprovado = cotacaoAprovada ? 'item-aprovado' : '';
-
-            let valorUnitarioComDifalEFrete;
-            try {
-                valorUnitarioComDifalEFrete = calcularValorUnitarioComDifalEFrete(item, fornecedorObj);
-            } catch (error) {
-                console.error('Erro ao calcular valor unitário com DIFAL e frete:', error);
-                const valorUnitario = parseFloat(item.valor_unitario) || 0;
-                const difalPercentual = parseFloat(itens[0].difal || 0);
-                const difalUnitario = (valorUnitario * difalPercentual) / 100;
-                valorUnitarioComDifalEFrete = valorUnitario + difalUnitario;
-            }
 
             const ultimoValor = item.ultimo_preco || item.valor_unitario;
 
@@ -877,17 +943,22 @@ function renderizarItensCotacaoParaRenegociacao(data) {
             let variacaoTexto = '0%';
             let variacaoReais = 'R$ 0,00';
 
-            // Novo cálculo da variação baseado no último valor aprovado
             if (item.ultimo_valor_aprovado && parseFloat(item.ultimo_valor_aprovado) > 0) {
                 const valorAtual = parseFloat(item.valor_unitario);
                 const ultimoValorAprovado = parseFloat(item.ultimo_valor_aprovado);
-                variacao = ((valorAtual - ultimoValorAprovado) / ultimoValorAprovado) * 100;
-                const variacaoValor = valorAtual - ultimoValorAprovado;
+                
+                // Calcular valores totais considerando a quantidade
+                const valorTotalAtual = valorUnitarioComDifalEFrete * quantidade;
+                const valorTotalUltimo = ultimoValorAprovado * quantidade;
+                
+                // Calcular variação percentual com mais precisão
+                variacao = ((valorTotalAtual - valorTotalUltimo) / valorTotalUltimo) * 100;
+                const variacaoValor = valorTotalAtual - valorTotalUltimo;
 
                 if (variacao > 0) {
                     variacaoClass = 'variacao-positiva';
                     variacaoTexto = `+${variacao.toFixed(2)}%`;
-                    variacaoReais = `+R$ ${formatarNumero(variacaoValor)}`;
+                    variacaoReais = `+R$ ${formatarNumero(Math.abs(variacaoValor))}`;
                 } else if (variacao < 0) {
                     variacaoClass = 'variacao-negativa';
                     variacaoTexto = `${variacao.toFixed(2)}%`;
@@ -903,10 +974,8 @@ function renderizarItensCotacaoParaRenegociacao(data) {
             const variacaoFormatada = `<span class="coluna-variacao ${variacaoClass}" title="Último valor aprovado: ${item.ultimo_valor_aprovado ? 'R$ ' + formatarNumero(item.ultimo_valor_aprovado) : 'N/A'}">${variacaoTexto}</span>`;
             const variacaoReaisFormatada = `<span class="coluna-variacao ${variacaoClass}" title="Último valor aprovado: ${item.ultimo_valor_aprovado ? 'R$ ' + formatarNumero(item.ultimo_valor_aprovado) : 'N/A'}">${variacaoReais}</span>`;
 
-    // Obter o número de rodadas (ou 0 se não existir)
     const numRodadas = item.rodadas ? parseInt(item.rodadas) : 0;
 
-    // Definir a classe CSS para o badge de rodadas
     let rodadasClass = 'rodadas-badge';
     if (numRodadas >= 3) {
         rodadasClass += ' rodadas-alta';
@@ -916,7 +985,6 @@ function renderizarItensCotacaoParaRenegociacao(data) {
         rodadasClass += ' rodadas-baixa';
     }
 
-    // Criar texto para o tooltip das rodadas
     let tooltipRodadas = '';
     if (numRodadas === 0) {
         tooltipRodadas = 'Primeira negociação';
@@ -928,7 +996,6 @@ function renderizarItensCotacaoParaRenegociacao(data) {
 
     const rodadasBadge = `<span class="${rodadasClass}" title="${tooltipRodadas}">${numRodadas}</span>`;
 
-    // E então modifique a linha onde você adiciona o rodadasBadge ao HTML:
     html += `
         <tr class="${classeAprovado}">
             <td>
@@ -950,46 +1017,35 @@ function renderizarItensCotacaoParaRenegociacao(data) {
             <td>R$ ${formatarNumero(item.valor_unitario)}</td>
             <td>R$ ${formatarNumero(valorUnitarioComDifalEFrete)}</td>
             <td>R$ ${formatarNumero(valorItemTotal)}</td>
+            <td>${item.ultimo_valor_aprovado ? 'R$ ' + formatarNumero(parseFloat(item.ultimo_valor_aprovado) * parseFloat(item.quantidade)) : '-'}</td>
             <td>${variacaoFormatada}</td>
             <td>${variacaoReaisFormatada}</td>
         </tr>
     `;
-
-
         });
     });
 
     container.innerHTML = html;
-
-    if (cotacaoAprovada) {
-        const style = document.createElement('style');
-        style.textContent = `
-            .item-aprovado {
-                background-color: rgba(46, 204, 113, 0.1);
-            }
-            .item-aprovado:hover {
-                background-color: rgba(46, 204, 113, 0.2);
-            }
-            .coluna-variacao {
-                font-weight: bold;
-            }
-            .variacao-positiva {
-                color: red;
-            }
-            .variacao-negativa {
-                color: green;
-            }
-            .variacao-neutra {
-                color: #888;
-            }
-        `;
-        document.head.appendChild(style);
-    }
 }
 
+// Adicionar a função verDetalhesProduto
+function verDetalhesProduto(produtoId, fornecedorNome) {
+    // Encontrar o nome do produto na linha atual
+    const row = event.target.closest('tr');
+    const produtoNome = row.querySelector('td:first-child').textContent.trim();
 
+    // Remover o número de rodadas e edições do nome do produto
+    const nomeLimpo = produtoNome.replace(/\d+$/g, '').trim();
 
+    // Garantir que temos um ID válido
+    if (!produtoId || produtoId === 'null') {
+        // Se não tiver ID, usar o nome do produto como identificador
+        produtoId = nomeLimpo;
+            }
 
+    // Abrir o modal de histórico
+    abrirModalHistorico(produtoId, nomeLimpo, fornecedorNome);
+    }
 
 
 function renegociarCotacao(id, motivoTexto) {
@@ -1371,16 +1427,14 @@ function renderizarMelhorPreco() {
             
             // Gerar HTML para a linha
             html += `
-                <tr>
+                <tr class="indicador-preco">
                     <td>${nomeProduto}</td>
                     <td>${melhorPrecoItem.fornecedor_nome || '-'}</td>
                     <td>${quantidade}</td>
                     <td>${melhorPrecoItem.produto_unidade || 'UN'}</td>
                     <td>R$ ${valorUnitario.toFixed(4).replace('.', ',')}</td>
-                    <td>R$ ${(quantidade * valorUnitario).toFixed(4).replace('.', ',')}</td>
-                    <td>${melhorPrazoEntregaItem ? melhorPrazoEntregaItem.prazo_entrega : '-'}</td>
-                    <td>${melhorPrazoPagamentoItem ? melhorPrazoPagamentoItem.prazo_pagamento : '-'}</td>
-                    <td>${melhorPrecoItem.fornecedor_nome || '-'}</td>
+                    <td>${melhorPrecoItem.prazo_entrega || '-'}</td>
+                    <td>${melhorPrecoItem.prazo_pagamento || '-'}</td>
                 </tr>
             `;
         } catch (error) {
@@ -1649,12 +1703,14 @@ function forcarVisualizacao(viewId) {
    
     // Obter referências a todos os containers
     const padrao = document.getElementById('visualizacao-padrao');
+    const resumo = document.getElementById('visualizacao-resumo');
     const melhorPreco = document.getElementById('visualizacao-melhor-preco');
     const melhorEntrega = document.getElementById('visualizacao-melhor-entrega');
     const melhorPagamento = document.getElementById('visualizacao-melhor-pagamento');
    
     // Esconder TODOS explicitamente
     if (padrao) padrao.style.display = 'none';
+    if (resumo) resumo.style.display = 'none';
     if (melhorPreco) melhorPreco.style.display = 'none';
     if (melhorEntrega) melhorEntrega.style.display = 'none';
     if (melhorPagamento) melhorPagamento.style.display = 'none';
@@ -1674,29 +1730,16 @@ function forcarVisualizacao(viewId) {
     const btnAtivo = document.getElementById('btn-' + viewId);
     if (btnAtivo) btnAtivo.classList.add('active');
    
-    // Renderizar dados e adicionar resumos conforme necessário
-    if (viewId === 'visualizacao-melhor-preco') {
+    // Renderizar dados conforme necessário
+    if (viewId === 'visualizacao-resumo') {
+        renderizarResumoComparativo();
+    } else if (viewId === 'visualizacao-melhor-preco') {
         renderizarMelhorPreco();
-        adicionarResumoPreco();
     } else if (viewId === 'visualizacao-melhor-entrega') {
         renderizarMelhorEntrega();
-
     } else if (viewId === 'visualizacao-melhor-pagamento') {
         renderizarMelhorPagamento();
-
     }
-   
-    // Verificar resultado
-    setTimeout(() => {
-        let visiveis = [];
-        ['visualizacao-padrao', 'visualizacao-melhor-preco', 'visualizacao-melhor-entrega', 'visualizacao-melhor-pagamento'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el && el.style.display === 'block') {
-                visiveis.push(id);
-            }
-        });
-        console.log('Visualizações visíveis após forçar:', visiveis);
-    }, 100);
 }
 
 function adicionarResumoPreco() {
@@ -2205,22 +2248,42 @@ function atualizarResumoOrcamento(data) {
         console.log('Calculando resumo apenas com itens aprovados:', itensParaCalculo.length, 'de', data.itens.length);
     }
     
-    // Encontrar o melhor preço para cada produto
-    const melhoresPrecos = {};
+    // Agrupar itens por fornecedor para calcular DIFAL e frete
+    const itensPorFornecedor = {};
     itensParaCalculo.forEach(item => {
-        const produtoNome = item.produto_nome;
-        const valorUnitario = parseFloat(item.valor_unitario) || 0;
-        
-        if (!melhoresPrecos[produtoNome] || valorUnitario < melhoresPrecos[produtoNome].valor) {
-            melhoresPrecos[produtoNome] = {
-                valor: valorUnitario,
-                quantidade: parseFloat(item.quantidade) || 0,
-                fornecedor: item.fornecedor_nome
+        if (!itensPorFornecedor[item.fornecedor_nome]) {
+            itensPorFornecedor[item.fornecedor_nome] = {
+                difal: parseFloat(item.difal || 0),
+                frete: parseFloat(item.frete || 0),
+                itens: []
             };
         }
+        itensPorFornecedor[item.fornecedor_nome].itens.push(item);
+    });
+
+    // Encontrar o melhor preço para cada produto, considerando DIFAL e frete
+    const melhoresPrecos = {};
+    Object.entries(itensPorFornecedor).forEach(([fornecedorNome, dados]) => {
+        dados.itens.forEach(item => {
+        const produtoNome = item.produto_nome;
+            const quantidade = parseFloat(item.quantidade) || 0;
+        const valorUnitario = parseFloat(item.valor_unitario) || 0;
+        
+            // Calcular valor unitário com DIFAL e frete
+            const valorUnitarioComDifalEFrete = calcularValorUnitarioComDifalEFrete(item, dados);
+            const valorTotal = quantidade * valorUnitarioComDifalEFrete;
+            
+            if (!melhoresPrecos[produtoNome] || valorTotal < melhoresPrecos[produtoNome].valor) {
+            melhoresPrecos[produtoNome] = {
+                    valor: valorTotal,
+                    quantidade: quantidade,
+                    fornecedor: fornecedorNome
+            };
+        }
+        });
     });
     
-    // Calcular produtos únicos (considerando apenas itens aprovados se for o caso)
+    // Calcular produtos únicos
     const produtosUnicos = Object.keys(melhoresPrecos);
     const totalProdutos = produtosUnicos.length;
     
@@ -2233,9 +2296,9 @@ function atualizarResumoOrcamento(data) {
         return total + item.quantidade;
     }, 0);
     
-    // Calcular valor total dos melhores preços
+    // Calcular valor total dos melhores preços (já inclui DIFAL e frete)
     const valorTotal = Object.values(melhoresPrecos).reduce((total, item) => {
-        return total + (item.valor * item.quantidade);
+        return total + item.valor;
     }, 0);
     
     // Atualizar os elementos HTML
@@ -2334,6 +2397,8 @@ function atualizarComparacaoCotacao(data) {
             itensPorFornecedor[item.fornecedor_nome] = {
                 valorAtual: 0,
                 valorUltimo: 0,
+                difal: parseFloat(item.difal || 0),
+                frete: parseFloat(item.frete || 0),
                 itens: []
             };
         }
@@ -2347,8 +2412,18 @@ function atualizarComparacaoCotacao(data) {
             const valorUnitarioAtual = parseFloat(item.valor_unitario || 0);
             const valorUnitarioUltimo = parseFloat(item.ultimo_valor_aprovado || 0);
 
-            dados.valorAtual += quantidade * valorUnitarioAtual;
-            dados.valorUltimo += quantidade * valorUnitarioUltimo;
+            // Calcular valor atual com DIFAL e frete
+            const valorUnitarioComDifalEFrete = calcularValorUnitarioComDifalEFrete(item, dados);
+            const valorTotalAtual = quantidade * valorUnitarioComDifalEFrete;
+
+            // Calcular valor último com DIFAL e frete (usando os mesmos percentuais)
+            const valorBaseUltimo = quantidade * valorUnitarioUltimo;
+            const difalUltimo = valorBaseUltimo * (dados.difal / 100);
+            const freteProporcionalUltimo = dados.frete * (valorBaseUltimo / (valorBaseUltimo + difalUltimo));
+            const valorTotalUltimo = valorBaseUltimo + difalUltimo + freteProporcionalUltimo;
+
+            dados.valorAtual += valorTotalAtual;
+            dados.valorUltimo += valorTotalUltimo;
         });
     });
 
@@ -2426,6 +2501,9 @@ function atualizarComparacaoCotacao(data) {
 
     // Atualizar a tabela
     document.getElementById('comparacao-cotacao-body').innerHTML = html;
+
+    // Atualizar a lista de produtos únicos
+    atualizarListaProdutosUnicos(data);
 }
 
 // Adicionar estilos CSS para a nova seção
@@ -2504,6 +2582,31 @@ style.textContent = `
         color: #28a745;
     }
 
+    /* Adicionar estilos para as visualizações */
+    .indicador-preco {
+        background-color: rgba(46, 204, 113, 0.1) !important;
+    }
+
+    .indicador-preco:hover {
+        background-color: rgba(46, 204, 113, 0.2) !important;
+    }
+
+    .indicador-entrega {
+        background-color: rgba(46, 204, 113, 0.1) !important;
+    }
+
+    .indicador-entrega:hover {
+        background-color: rgba(46, 204, 113, 0.2) !important;
+    }
+
+    .indicador-pagamento {
+        background-color: rgba(46, 204, 113, 0.1) !important;
+    }
+
+    .indicador-pagamento:hover {
+        background-color: rgba(46, 204, 113, 0.2) !important;
+    }
+
     @media (max-width: 768px) {
         .tabela-comparacao {
             font-size: 0.85em;
@@ -2517,6 +2620,379 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
+// Nova função para atualizar a lista de produtos únicos
+function atualizarListaProdutosUnicos(data) {
+    if (!data || !data.itens) {
+        console.error('Dados inválidos para lista de produtos');
+        return;
+    }
+
+    // Criar um Set para armazenar produtos únicos
+    const produtosUnicos = new Set();
+    
+    // Adicionar produtos ao Set
+    data.itens.forEach(item => {
+        if (item.produto_nome) {
+            produtosUnicos.add(item.produto_nome);
+        }
+    });
+
+    // Converter Set para Array e ordenar alfabeticamente
+    const produtosOrdenados = Array.from(produtosUnicos).sort();
+
+    // Gerar HTML para a tabela
+    let html = '';
+    produtosOrdenados.forEach(produto => {
+        // Encontrar o primeiro item com este nome de produto para obter o ID e fornecedor
+        const itemProduto = data.itens.find(item => item.produto_nome === produto);
+        
+        html += `
+            <tr>
+                <td>${produto}</td>
+                <td>
+                    <button class="btn-acao btn-visualizar" onclick="verDetalhesProduto('${itemProduto.produto_id}', '${itemProduto.fornecedor_nome}')" title="Ver detalhes">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    // Atualizar a tabela
+    document.getElementById('lista-produtos-body').innerHTML = html;
+}
+
+// Adicionar estilos CSS para a nova seção
+const styleProdutos = document.createElement('style');
+styleProdutos.textContent = `
+    .lista-produtos-unicos {
+        margin: 20px 0;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 15px;
+    }
+
+    .lista-produtos-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .lista-produtos-header h4 {
+        color: #333;
+        margin: 0;
+        font-size: 1.1em;
+        font-weight: 600;
+    }
+
+    .btn-toggle-lista {
+        background: none;
+        border: none;
+        color: #666;
+        cursor: pointer;
+        padding: 5px;
+        transition: transform 0.3s ease;
+    }
+
+    .btn-toggle-lista:hover {
+        color: #333;
+    }
+
+    .btn-toggle-lista.rotated {
+        transform: rotate(180deg);
+    }
+
+    .tabela-produtos {
+        overflow-x: auto;
+        transition: all 0.3s ease;
+    }
+
+    .tabela-produtos table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 0.9em;
+    }
+
+    .tabela-produtos th,
+    .tabela-produtos td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .tabela-produtos th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        color: #555;
+    }
+
+    .tabela-produtos tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    .tabela-produtos .btn-acao {
+        background: none;
+        border: none;
+        color: #666;
+        cursor: pointer;
+        padding: 5px;
+        transition: color 0.3s ease;
+    }
+
+    .tabela-produtos .btn-acao:hover {
+        color: #333;
+    }
+
+    @media (max-width: 768px) {
+        .tabela-produtos {
+            font-size: 0.85em;
+        }
+        
+        .tabela-produtos th,
+        .tabela-produtos td {
+            padding: 8px 10px;
+        }
+    }
+`;
+document.head.appendChild(styleProdutos);
+
+// Adicionar função para alternar a visibilidade da lista
+function toggleListaProdutos() {
+    const tabela = document.querySelector('.tabela-produtos');
+    const btn = document.querySelector('.btn-toggle-lista');
+    
+    if (tabela.style.display === 'none') {
+        tabela.style.display = 'block';
+        btn.classList.add('rotated');
+    } else {
+        tabela.style.display = 'none';
+        btn.classList.remove('rotated');
+    }
+}
+
+function renderizarResumoComparativo() {
+    if (!cotacaoData || !cotacaoData.itens) {
+        console.error('Dados da cotação não disponíveis');
+        return;
+    }
+
+    const tbody = document.getElementById('tabela-resumo-body');
+    let html = '';
+
+    // Agrupar produtos por nome
+    const produtosAgrupados = {};
+    cotacaoData.itens.forEach(item => {
+        const nomeProduto = item.produto_nome;
+        if (!produtosAgrupados[nomeProduto]) {
+            produtosAgrupados[nomeProduto] = [];
+        }
+        produtosAgrupados[nomeProduto].push(item);
+    });
+
+    // Para cada produto, encontrar as melhores opções
+    Object.entries(produtosAgrupados).forEach(([nomeProduto, itens]) => {
+        // Melhor preço
+        const itensPorPreco = [...itens].sort((a, b) => parseFloat(a.valor_unitario) - parseFloat(b.valor_unitario));
+        const melhorPreco = itensPorPreco[0];
+
+        // Melhor prazo de entrega
+        const itensComPrazoEntrega = itens.filter(item => item.prazo_entrega && item.prazo_entrega.trim() !== '');
+        const itensPorPrazoEntrega = itensComPrazoEntrega.sort((a, b) => {
+            const diasA = parseInt(a.prazo_entrega.match(/\d+/)?.[0] || 999);
+            const diasB = parseInt(b.prazo_entrega.match(/\d+/)?.[0] || 999);
+            return diasA - diasB;
+        });
+        const melhorPrazoEntrega = itensPorPrazoEntrega[0] || itens[0];
+
+        // Melhor prazo de pagamento
+        const itensComPrazoPagamento = itens.filter(item => item.prazo_pagamento && item.prazo_pagamento.trim() !== '');
+        const itensPorPrazoPagamento = itensComPrazoPagamento.sort((a, b) => {
+            const diasA = parseInt(a.prazo_pagamento.match(/\d+/)?.[0] || 0);
+            const diasB = parseInt(b.prazo_pagamento.match(/\d+/)?.[0] || 0);
+            return diasB - diasA; // Ordem decrescente (maior prazo é melhor)
+        });
+        const melhorPrazoPagamento = itensPorPrazoPagamento[0] || itens[0];
+
+        html += `
+            <tr>
+                <td>${nomeProduto}</td>
+                <td>${melhorPreco.quantidade}</td>
+                <td>${melhorPreco.produto_unidade || 'UN'}</td>
+                <td class="melhor-preco">R$ ${formatarNumero(melhorPreco.valor_unitario)}</td>
+                <td>${melhorPreco.fornecedor_nome}</td>
+                <td class="melhor-entrega">${melhorPrazoEntrega.prazo_entrega || '-'}</td>
+                <td>${melhorPrazoEntrega.fornecedor_nome}</td>
+                <td class="melhor-pagamento">${melhorPrazoPagamento.prazo_pagamento || '-'}</td>
+                <td>${melhorPrazoPagamento.fornecedor_nome}</td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = html;
+}
+
+// Atualizar a função forcarVisualizacao para incluir o novo caso
+function forcarVisualizacao(viewId) {
+    console.log('Forçando visualização:', viewId);
+   
+    // Obter referências a todos os containers
+    const padrao = document.getElementById('visualizacao-padrao');
+    const resumo = document.getElementById('visualizacao-resumo');
+    const melhorPreco = document.getElementById('visualizacao-melhor-preco');
+    const melhorEntrega = document.getElementById('visualizacao-melhor-entrega');
+    const melhorPagamento = document.getElementById('visualizacao-melhor-pagamento');
+   
+    // Esconder TODOS explicitamente
+    if (padrao) padrao.style.display = 'none';
+    if (resumo) resumo.style.display = 'none';
+    if (melhorPreco) melhorPreco.style.display = 'none';
+    if (melhorEntrega) melhorEntrega.style.display = 'none';
+    if (melhorPagamento) melhorPagamento.style.display = 'none';
+   
+    // Mostrar APENAS o selecionado
+    const selecionado = document.getElementById(viewId);
+    if (selecionado) {
+        selecionado.style.display = 'block';
+        console.log(`Elemento ${viewId} agora está visível`);
+    }
+   
+    // Atualizar classes dos botões
+    document.querySelectorAll('.btn-view').forEach(btn => {
+        btn.classList.remove('active');
+    });
+   
+    const btnAtivo = document.getElementById('btn-' + viewId);
+    if (btnAtivo) btnAtivo.classList.add('active');
+   
+    // Renderizar dados conforme necessário
+    if (viewId === 'visualizacao-resumo') {
+        renderizarResumoComparativo();
+    } else if (viewId === 'visualizacao-melhor-preco') {
+        renderizarMelhorPreco();
+    } else if (viewId === 'visualizacao-melhor-entrega') {
+        renderizarMelhorEntrega();
+    } else if (viewId === 'visualizacao-melhor-pagamento') {
+        renderizarMelhorPagamento();
+    }
+}
+
+// Adicionar estilos CSS para a nova visualização
+const styleResumo = document.createElement('style');
+styleResumo.textContent = `
+    .tabela-resumo {
+        overflow-x: auto;
+        margin-top: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .tabela-resumo table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9em;
+        background: white;
+    }
+
+    .tabela-resumo th,
+    .tabela-resumo td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .tabela-resumo th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        color: #555;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    .tabela-resumo tr:hover {
+        background-color: #f8f9fa;
+        transition: background-color 0.2s ease;
+    }
+
+    .tabela-resumo .melhor-preco {
+        color: #28a745;
+        font-weight: 500;
+        position: relative;
+    }
+
+    .tabela-resumo .melhor-preco::before {
+        content: '↓';
+        position: absolute;
+        left: -15px;
+        color: #28a745;
+    }
+
+    .tabela-resumo .melhor-entrega {
+        color: #007bff;
+        font-weight: 500;
+        position: relative;
+    }
+
+    .tabela-resumo .melhor-entrega::before {
+        content: '⚡';
+        position: absolute;
+        left: -15px;
+        color: #007bff;
+    }
+
+    .tabela-resumo .melhor-pagamento {
+        color: #6f42c1;
+        font-weight: 500;
+        position: relative;
+    }
+
+    .tabela-resumo .melhor-pagamento::before {
+        content: '💳';
+        position: absolute;
+        left: -15px;
+        color: #6f42c1;
+    }
+
+    /* Adicionar linhas alternadas para melhor legibilidade */
+    .tabela-resumo tr:nth-child(even) {
+        background-color: #fafafa;
+    }
+
+    /* Estilo para células vazias ou com valor '-' */
+    .tabela-resumo td:empty,
+    .tabela-resumo td:contains('-') {
+        color: #999;
+        font-style: italic;
+    }
+
+    /* Adicionar tooltip nos valores */
+    .tabela-resumo td[title] {
+        cursor: help;
+        border-bottom: 1px dotted #ccc;
+    }
+
+    /* Estilo para destacar quando o mesmo fornecedor tem a melhor oferta em múltiplos critérios */
+    .tabela-resumo tr.mesmo-fornecedor {
+        background-color: #f0f7ff;
+    }
+
+    @media (max-width: 768px) {
+        .tabela-resumo {
+            font-size: 0.85em;
+        }
+        
+        .tabela-resumo th,
+        .tabela-resumo td {
+            padding: 8px 10px;
+        }
+    }
+`;
+document.head.appendChild(styleResumo);
 </script>
 
 <style>
@@ -2552,3 +3028,15 @@ document.head.appendChild(style);
 
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<?php include 'includes/modal_historico.php'; ?>
+
+<style>
+    .modal-content.modal-analise {
+        width: 95%;
+        max-width: 1400px;
+        max-height: 95vh;
+        margin: 2.5vh auto;
+        overflow-y: auto;
+    }
+</style>

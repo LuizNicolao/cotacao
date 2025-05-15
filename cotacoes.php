@@ -52,7 +52,9 @@ if (!$is_admin) {
     error_log("Filtrando cotações para o usuário ID: " . $usuario_id);
 }
 
-$query .= " GROUP BY c.id ORDER BY c.data_criacao DESC";
+$query .= " GROUP BY c.id, c.usuario_id, c.data_criacao, c.status, c.prazo_pagamento, 
+    c.motivo_aprovacao, c.motivo_rejeicao, c.data_aprovacao, u.nome 
+    ORDER BY c.data_criacao DESC";
 
 error_log("Query SQL: " . $query);
 
@@ -93,7 +95,6 @@ function salvarVersaoCotacao($cotacaoId, $dados) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 <body>
-    <div id="notification-container"></div>
     <div class="dashboard-container">
         <?php include 'includes/sidebar.php'; ?>
         <div class="main-content">
@@ -118,6 +119,48 @@ function salvarVersaoCotacao($cotacaoId, $dados) {
             </header>
 
             <div id="notification-container" class="notification-container"></div>
+
+            <div class="dashboard-cards">
+                <div class="card">
+                    <i class="fas fa-clock"></i>
+                    <div class="card-info">
+                        <h3>Cotações Pendentes</h3>
+                        <span class="number" id="pendentes-count">0</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <i class="fas fa-file-invoice"></i>
+                    <div class="card-info">
+                        <h3>Cotações Aguardando Aprovação</h3>
+                        <span class="number" id="aguardando-aprovacao-count">0</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <i class="fas fa-check-circle"></i>
+                    <div class="card-info">
+                        <h3>Cotações Aprovadas</h3>
+                        <span class="number" id="aprovadas-count">0</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <i class="fas fa-times-circle"></i>
+                    <div class="card-info">
+                        <h3>Cotações Rejeitadas</h3>
+                        <span class="number" id="rejeitadas-count">0</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <i class="fas fa-sync-alt"></i>
+                    <div class="card-info">
+                        <h3>Cotações em Renegociação</h3>
+                        <span class="number" id="renegociacao-count">0</span>
+                    </div>
+                </div>
+            </div>
 
             <div class="content">
                 <!-- Adicionar filtros -->
@@ -170,6 +213,7 @@ function salvarVersaoCotacao($cotacaoId, $dados) {
                             <th>ID</th>
                             <th>Data Criação</th>
                             <th>Comprador</th>
+                            <th>Tipo</th>
                             <th>Total Itens</th>
                             <th>Status</th>
                             <th>Ações</th>
@@ -182,18 +226,28 @@ function salvarVersaoCotacao($cotacaoId, $dados) {
                                 <td><?php echo $cotacao['id']; ?></td>
                                 <td><?php echo date('d/m/Y', strtotime($cotacao['data_criacao'])); ?></td>
                                 <td><?php echo htmlspecialchars($cotacao['usuario_nome']); ?></td>
+                                <td>
+                                    <?php if ($cotacao['tipo'] === 'emergencial'): ?>
+                                        <span class="tipo-badge emergencial" title="<?php echo htmlspecialchars($cotacao['motivo_emergencial']); ?>">
+                                            <i class="fas fa-exclamation-circle"></i> Emergencial
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="tipo-badge programada">
+                                            <i class="fas fa-calendar-check"></i> Programada
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?php echo $cotacao['total_itens']; ?></td>
                                 <td>
                                     <span class="status-badge <?php echo $cotacao['status']; ?>">
                                         <?php 
-$status_texto = [
-    'pendente' => 'Pendente',
-    'aguardando_aprovacao' => 'Aguardando Aprovação',
-    'aprovado' => 'Aprovado',
-    'rejeitado' => 'Rejeitado',
-    'renegociacao' => 'Em Renegociação'
-];
-
+                                            $status_texto = [
+                                                'pendente' => 'Pendente',
+                                                'aguardando_aprovacao' => 'Aguardando Aprovação',
+                                                'aprovado' => 'Aprovado',
+                                                'rejeitado' => 'Rejeitado',
+                                                'renegociacao' => 'Em Renegociação'
+                                            ];
                                             echo $status_texto[$cotacao['status']] ?? ucfirst($cotacao['status']); 
                                         ?>
                                     </span>
@@ -239,11 +293,67 @@ $status_texto = [
     <script src="assets/js/notifications.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Função para atualizar os contadores dos cards
+        function atualizarContadoresCards() {
+            const rows = document.querySelectorAll('#tabela-cotacoes tbody tr');
+            const contadores = {
+                'pendente': 0,
+                'aguardando_aprovacao': 0,
+                'aprovado': 0,
+                'rejeitado': 0,
+                'renegociacao': 0
+            };
+
+            rows.forEach(row => {
+                const status = row.getAttribute('data-status');
+                if (contadores.hasOwnProperty(status)) {
+                    contadores[status]++;
+                }
+            });
+
+            // Atualizar os elementos na página
+            document.getElementById('pendentes-count').textContent = contadores['pendente'];
+            document.getElementById('aguardando-aprovacao-count').textContent = contadores['aguardando_aprovacao'];
+            document.getElementById('aprovadas-count').textContent = contadores['aprovado'];
+            document.getElementById('rejeitadas-count').textContent = contadores['rejeitado'];
+            document.getElementById('renegociacao-count').textContent = contadores['renegociacao'];
+        }
+
+        // Adicionar eventos de clique aos cards
+        const cards = document.querySelectorAll('.dashboard-cards .card');
+        cards.forEach((card, index) => {
+            card.style.cursor = 'pointer';
+            card.addEventListener('click', function() {
+                const statusMap = {
+                    0: 'pendente',
+                    1: 'aguardando_aprovacao',
+                    2: 'aprovado',
+                    3: 'rejeitado',
+                    4: 'renegociacao'
+                };
+                
+                const status = statusMap[index];
+                document.getElementById('filtro-status').value = status;
+                filtrarCotacoes();
+                
+                // Adicionar classe de destaque ao card clicado
+                cards.forEach(c => c.classList.remove('card-active'));
+                card.classList.add('card-active');
+            });
+        });
+
+        // Chamar a função quando a página carregar
+        atualizarContadoresCards();
+
         // Configurar filtros
         const btnFiltrar = document.getElementById('btn-filtrar');
         if (btnFiltrar) {
             btnFiltrar.addEventListener('click', function() {
                 filtrarCotacoes();
+                // Remover destaque dos cards ao usar o botão filtrar
+                document.querySelectorAll('.dashboard-cards .card').forEach(card => {
+                    card.classList.remove('card-active');
+                });
             });
         }
         
@@ -271,11 +381,24 @@ $status_texto = [
                 }
                 <?php endif; ?>
                 
-                // Filtrar por data (implementar se necessário)
-                // ...
+                // Filtrar por data
+                if (dataInicio || dataFim) {
+                    const dataCotacao = new Date(row.children[1].getAttribute('data-date'));
+                    
+                    if (dataInicio && new Date(dataInicio) > dataCotacao) {
+                        mostrar = false;
+                    }
+                    
+                    if (dataFim && new Date(dataFim) < dataCotacao) {
+                        mostrar = false;
+                    }
+                }
                 
                 row.style.display = mostrar ? '' : 'none';
             });
+
+            // Atualizar contadores após filtrar
+            atualizarContadoresCards();
         }
         
         // Initialize modal and attach listeners

@@ -54,7 +54,7 @@ session_start();
 </head>
 <body>
     <div class="acesso-negado">
-        <i class="fas fa-exclamation-triangle"></i>
+        <i class="fas fa-exclamation-circle"></i>
         <h1>Acesso Negado</h1>
         <p>Você não tem permissão para acessar esta página.</p>
         <?php if (isset($_SESSION['usuario'])): ?>

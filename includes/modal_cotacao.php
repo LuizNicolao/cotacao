@@ -14,6 +14,56 @@
             </div>
 
             <div class="form-group">
+                <label>Tipo de Compra: <span class="required">*</span></label>
+                <div class="radio-group" required>
+                    <label>
+                        <input type="radio" name="tipo_compra" value="programada" checked required>
+                        Compra Programada
+                    </label>
+                    <label>
+                        <input type="radio" name="tipo_compra" value="emergencial" required>
+                        Compra Emergencial
+                    </label>
+                </div>
+            </div>
+
+            <!-- Campo de justificativa para compra emergencial -->
+            <div id="justificativa-emergencial" style="display: none;">
+                <div class="form-group">
+                    <label>Motivo da Compra Emergencial: <span class="required">*</span></label>
+                    <select id="justificativa-padrao" class="form-control" required>
+                        <option value="">Selecione o motivo</option>
+                        <option value="atraso_fornecedor">Atraso fornecedor</option>
+                        <option value="aumento_consumo">Aumento de consumo</option>
+                        <option value="substituicao_reposicao">Substituição/Reposição de produtos (ponto a ponto)</option>
+                        <option value="troca_cardapio">Troca de cardápio</option>
+                        <option value="implantacao">Implantação</option>
+                        <option value="substituicao_equipamento">Substituição de equipamento/utensílio por dano</option>
+                        <option value="notificacao">Notificação</option>
+                        <option value="outros">Outro(s)</option>
+                    </select>
+                </div>
+
+                <!-- Campo específico para fornecedor com atraso -->
+                <div id="fornecedor-atraso" class="form-group" style="display: none;">
+                    <label>Fornecedor com Atraso: <span class="required">*</span></label>
+                    <input type="text" id="fornecedor-atraso-input" class="form-control" placeholder="Informe o fornecedor que não entregou na data">
+                </div>
+
+                <!-- Campo específico para substituição/reposição -->
+                <div id="fornecedor-problema" class="form-group" style="display: none;">
+                    <label>Fornecedor que Gerou o Problema: <span class="required">*</span></label>
+                    <input type="text" id="fornecedor-problema-input" class="form-control" placeholder="Informe o fornecedor que gerou o problema">
+                </div>
+
+                <!-- Campo para justificativa personalizada -->
+                <div id="justificativa-personalizada-container" class="form-group" style="display: none;">
+                    <label>Justificativa Detalhada: <span class="required">*</span></label>
+                    <textarea id="justificativa-personalizada" class="form-control" rows="3" placeholder="Descreva detalhadamente o motivo da compra emergencial"></textarea>
+                </div>
+            </div>
+
+            <div class="form-group">
                 <label for="excelFile"><i class="fas fa-file-excel"></i> Upload da Planilha:</label>
                 <input type="file" id="excelFile" accept=".xlsx,.xls" data-required="true">
                 <small>Formatos aceitos: XLSX, XLS</small>
@@ -231,15 +281,18 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Função para verificar se um produto já existe na cotação
-    function produtoJaExisteNaCotacao(codigo) {
-        const produtosExistentes = document.querySelectorAll('.produtos-fornecedor tr');
-        for (const row of produtosExistentes) {
-            const produtoId = row.querySelector('.produto-id')?.value;
-            if (produtoId === codigo) {
-                return true;
+    function produtoJaExisteNaCotacao(nome) {
+        const produtosExistentes = [];
+        document.querySelectorAll('.fornecedor-section').forEach(section => {
+            const fornecedorNome = section.querySelector('.fornecedor-input')?.value;
+            section.querySelectorAll('.produtos-fornecedor tr').forEach(row => {
+                const produtoNome = row.querySelector('.produto-selected')?.textContent.trim();
+                if (produtoNome === nome) {
+                    produtosExistentes.push(fornecedorNome);
             }
-        }
-        return false;
+            });
+        });
+        return produtosExistentes;
     }
 
     // Adicionar evento de clique para o botão de fechar do modal de importação
@@ -321,12 +374,23 @@ document.addEventListener('DOMContentLoaded', function() {
                         tbody.innerHTML = '';
                         
                         produtosProcessados.forEach(produto => {
-                            const jaExiste = produtoJaExisteNaCotacao(produto.codigo);
+                            const fornecedoresExistentes = produtoJaExisteNaCotacao(produto.nome);
+                            const fornecedoresAtuais = getFornecedoresAtuais();
+                            
+                            // Verificar se o produto já existe em todos os fornecedores
+                            const existeEmTodosFornecedores = fornecedoresAtuais.every(
+                                fornecedor => fornecedoresExistentes.includes(fornecedor)
+                            );
+                            
+                            // Se o produto já existe em todos os fornecedores, não mostrar no modal
+                            if (existeEmTodosFornecedores) {
+                                return;
+                            }
+                            
                             const tr = document.createElement('tr');
                             tr.innerHTML = `
                                 <td>
                                     <input type="checkbox" class="produto-check" 
-                                           ${jaExiste ? 'disabled' : ''} 
                                            data-codigo="${produto.codigo}"
                                            data-nome="${produto.nome}"
                                            data-quantidade="${produto.quantidade}"
@@ -338,19 +402,26 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <td>${produto.unidade}</td>
                                 <td>
                                     <div class="fornecedor-checkbox-dropdown">
-                                        <button type="button" class="btn-toggle-fornecedores">Selecionar fornecedores</button>
-                                        <div class="fornecedor-checkbox-list vertical-scroll" style="display:none;position:static;box-shadow:none;left:auto;top:auto;">
+                                        <button type="button" class="btn-toggle-fornecedores">
+                                            Selecionar fornecedores
+                                            <span class="fornecedor-count">(0/0)</span>
+                                        </button>
+                                        <div class="fornecedor-checkbox-list" style="display:none;">
                                             ${fornecedores.map(f => `
-                                                <label style="display:block;margin-bottom:4px;">
-                                                    <input type="checkbox" class="fornecedor-checkbox" value="${f}" ${jaExiste ? 'disabled' : ''}> ${f}
+                                                <label>
+                                                    <input type="checkbox" class="fornecedor-checkbox" value="${f}" 
+                                                           ${fornecedoresExistentes.includes(f) ? 'disabled' : ''}>
+                                                    <span>${f}</span>
+                                                    ${fornecedoresExistentes.includes(f) ? 
+                                                        '<span class="fornecedor-status existe">Já existe</span>' : ''}
                                                 </label>
                                             `).join('')}
                                         </div>
                                     </div>
                                 </td>
                                 <td>
-                                    ${jaExiste ? 
-                                        '<span class="status-badge ja-existe">Já existe na cotação</span>' : 
+                                    ${fornecedoresExistentes.length > 0 ? 
+                                        `<span class="status-badge ja-existe">Já existe em: ${fornecedoresExistentes.join(', ')}</span>` : 
                                         '<span class="status-badge novo">Novo produto</span>'}
                                 </td>
                             `;
@@ -511,6 +582,130 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('produtos-importacao-container').style.display = 'none';
         });
     }
+
+    // Elementos do formulário
+    const tipoCompraRadios = document.querySelectorAll('input[name="tipo_compra"]');
+    const justificativaEmerencial = document.getElementById('justificativa-emergencial');
+    const justificativaPadrao = document.getElementById('justificativa-padrao');
+    const justificativaPersonalizadaContainer = document.getElementById('justificativa-personalizada-container');
+    const justificativaPersonalizada = document.getElementById('justificativa-personalizada');
+
+    // Mostrar/esconder campos de emergência
+    tipoCompraRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            justificativaEmerencial.style.display = this.value === 'emergencial' ? 'block' : 'none';
+            
+            // Resetar campos quando mudar para programada
+            if (this.value === 'programada') {
+                justificativaPadrao.value = '';
+                justificativaPersonalizada.value = '';
+                justificativaPersonalizadaContainer.style.display = 'none';
+            }
+        });
+    });
+
+    // Mostrar/esconder campo de justificativa personalizada
+    justificativaPadrao.addEventListener('change', function() {
+        const fornecedorAtrasoDiv = document.getElementById('fornecedor-atraso');
+        const fornecedorProblemaDiv = document.getElementById('fornecedor-problema');
+        const justificativaPersonalizadaDiv = document.getElementById('justificativa-personalizada-container');
+        
+        // Esconder todos os campos específicos primeiro
+        fornecedorAtrasoDiv.style.display = 'none';
+        fornecedorProblemaDiv.style.display = 'none';
+        justificativaPersonalizadaDiv.style.display = 'none';
+        
+        // Mostrar o campo apropriado baseado na seleção
+        switch(this.value) {
+            case 'atraso_fornecedor':
+                fornecedorAtrasoDiv.style.display = 'block';
+                break;
+            case 'substituicao_reposicao':
+                fornecedorProblemaDiv.style.display = 'block';
+                break;
+            case 'outros':
+                justificativaPersonalizadaDiv.style.display = 'block';
+                document.getElementById('justificativa-personalizada').placeholder = 'Descreva detalhadamente o(s) motivo(s) da compra emergencial';
+                break;
+            case 'aumento_consumo':
+            case 'troca_cardapio':
+            case 'implantacao':
+            case 'substituicao_equipamento':
+            case 'notificacao':
+                justificativaPersonalizadaDiv.style.display = 'block';
+                document.getElementById('justificativa-personalizada').placeholder = 'Descreva detalhadamente o motivo da compra emergencial';
+                break;
+        }
+    });
+
+    // Modificar a função de salvar para incluir os novos campos
+    const formCotacao = document.getElementById('formCotacao');
+    formCotacao.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Validar tipo de compra
+        const tipoCompra = document.querySelector('input[name="tipo_compra"]:checked');
+        if (!tipoCompra) {
+            alert('Por favor, selecione o tipo de compra.');
+            return;
+        }
+        
+        const tipoCompraValue = tipoCompra.value;
+        let motivoEmergencial = '';
+        
+        if (tipoCompraValue === 'emergencial') {
+            const justificativaPadrao = document.getElementById('justificativa-padrao');
+            if (!justificativaPadrao.value) {
+                alert('Por favor, selecione o motivo da compra emergencial.');
+                return;
+            }
+            
+            switch(justificativaPadrao.value) {
+                case 'atraso_fornecedor':
+                    const fornecedorAtraso = document.getElementById('fornecedor-atraso-input').value.trim();
+                    if (!fornecedorAtraso) {
+                        alert('Por favor, informe o fornecedor com atraso.');
+                        return;
+                    }
+                    motivoEmergencial = `Atraso fornecedor - ${fornecedorAtraso}`;
+                    break;
+                    
+                case 'substituicao_reposicao':
+                    const fornecedorProblema = document.getElementById('fornecedor-problema-input').value.trim();
+                    if (!fornecedorProblema) {
+                        alert('Por favor, informe o fornecedor que gerou o problema.');
+                        return;
+                    }
+                    motivoEmergencial = `Substituição/Reposição de produtos - ${fornecedorProblema}`;
+                    break;
+                    
+                case 'outros':
+                    const justificativaOutros = document.getElementById('justificativa-personalizada').value.trim();
+                    if (!justificativaOutros) {
+                        alert('Por favor, descreva detalhadamente o(s) motivo(s) da compra emergencial.');
+                        return;
+                    }
+                    motivoEmergencial = `Outro(s) - ${justificativaOutros}`;
+                    break;
+                    
+                default:
+                    const justificativaPersonalizada = document.getElementById('justificativa-personalizada').value.trim();
+                    if (!justificativaPersonalizada) {
+                        alert('Por favor, descreva detalhadamente o motivo da compra emergencial.');
+                        return;
+                    }
+                    motivoEmergencial = justificativaPersonalizada;
+            }
+        }
+
+        // Adicionar os novos campos ao FormData
+        const formData = new FormData(this);
+        formData.append('tipo', tipoCompraValue);
+        formData.append('motivo_emergencial', motivoEmergencial);
+
+        // Continuar com o envio do formulário
+        // ... existing code ...
+    });
 });
 
 document.addEventListener('click', function(e) {
@@ -519,15 +714,40 @@ document.addEventListener('click', function(e) {
         const dropdown = e.target.closest('.fornecedor-checkbox-dropdown');
         const list = dropdown.querySelector('.fornecedor-checkbox-list');
         const isOpen = list.style.display === 'block';
+        
         // Fecha todos os outros abertos
-        document.querySelectorAll('.fornecedor-checkbox-list').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.fornecedor-checkbox-list').forEach(el => {
+            el.style.display = 'none';
+            el.previousElementSibling.classList.remove('active');
+        });
+        
         if (!isOpen) {
             list.style.display = 'block';
+            e.target.classList.add('active');
+            
+            // Atualiza o contador de selecionados
+            const selectedCount = list.querySelectorAll('input[type="checkbox"]:checked:not(:disabled)').length;
+            const totalCount = list.querySelectorAll('input[type="checkbox"]:not(:disabled)').length;
+            e.target.querySelector('.fornecedor-count').textContent = `(${selectedCount}/${totalCount})`;
         }
         e.stopPropagation();
     } else {
         // Fecha dropdown se clicar fora
-        document.querySelectorAll('.fornecedor-checkbox-list').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.fornecedor-checkbox-list').forEach(el => {
+            el.style.display = 'none';
+            el.previousElementSibling.classList.remove('active');
+        });
+    }
+});
+
+// Adicionar evento para atualizar contador quando checkboxes são alterados
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('fornecedor-checkbox')) {
+        const dropdown = e.target.closest('.fornecedor-checkbox-dropdown');
+        const button = dropdown.querySelector('.btn-toggle-fornecedores');
+        const selectedCount = dropdown.querySelectorAll('input[type="checkbox"]:checked:not(:disabled)').length;
+        const totalCount = dropdown.querySelectorAll('input[type="checkbox"]:not(:disabled)').length;
+        button.querySelector('.fornecedor-count').textContent = `(${selectedCount}/${totalCount})`;
     }
 });
 </script>
@@ -650,36 +870,149 @@ document.addEventListener('click', function(e) {
 
 #produtos-importacao-container .fornecedor-checkbox-dropdown {
     position: relative;
-    display: block;
     width: 100%;
 }
-#produtos-importacao-container .btn-toggle-fornecedores {
+
+.btn-toggle-fornecedores {
     width: 100%;
-    padding: 4px 8px;
-    background: #f1f3f6;
-    border: 1px solid #ccc;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 0.98em;
+    font-size: 0.9em;
     text-align: left;
-    margin-bottom: 2px;
-    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.2s ease;
 }
-#produtos-importacao-container .btn-toggle-fornecedores:hover {
-    background: #e2e6ea;
+
+.btn-toggle-fornecedores:hover {
+    background: #e9ecef;
+    border-color: #ced4da;
 }
-#produtos-importacao-container .fornecedor-checkbox-list.vertical-scroll {
-    max-height: 120px;
-    overflow-y: auto;
-    min-width: 120px;
-    border: 1px solid #eee;
-    padding: 4px 8px;
-    background: #fafbfc;
+
+.btn-toggle-fornecedores::after {
+    content: '\f107';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    margin-left: 8px;
+    transition: transform 0.2s ease;
+}
+
+.btn-toggle-fornecedores.active::after {
+    transform: rotate(180deg);
+}
+
+.fornecedor-checkbox-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #dee2e6;
     border-radius: 4px;
-    position: static;
-    left: auto;
-    top: auto;
-    z-index: auto;
-    box-shadow: none;
+    margin-top: 4px;
+    padding: 8px;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.fornecedor-checkbox-list label {
+    display: flex;
+    align-items: center;
+    padding: 6px 8px;
+    margin: 2px 0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.fornecedor-checkbox-list label:hover {
+    background-color: #f8f9fa;
+}
+
+.fornecedor-checkbox-list input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.fornecedor-checkbox-list input[type="checkbox"]:disabled + span {
+    color: #6c757d;
+    font-style: italic;
+}
+
+.fornecedor-checkbox-list .fornecedor-status {
+    margin-left: auto;
+    font-size: 0.85em;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.fornecedor-checkbox-list .fornecedor-status.existe {
+    background-color: #e9ecef;
+    color: #495057;
+}
+
+/* Estilo para o contador de fornecedores selecionados */
+.fornecedor-count {
+    font-size: 0.85em;
+    color: #6c757d;
+    margin-left: 8px;
+}
+
+.radio-group {
+    display: flex;
+    gap: 20px;
+    margin: 10px 0;
+}
+
+.radio-group label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+#justificativa-emergencial {
+    margin-top: 15px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+}
+
+#justificativa-emergencial .form-group {
+    margin-bottom: 15px;
+}
+
+#justificativa-emergencial label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+#justificativa-emergencial select,
+#justificativa-emergencial input,
+#justificativa-emergencial textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+#justificativa-emergencial select:focus,
+#justificativa-emergencial input:focus,
+#justificativa-emergencial textarea:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+}
+
+.required {
+    color: #dc3545;
+    margin-left: 4px;
 }
 </style>

@@ -40,6 +40,12 @@
                     <span>Sawing</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a href="fornecedores.php" class="nav-link <?php echo $pagina_atual == 'fornecedores' ? 'active' : ''; ?>">
+                    <i class="fas fa-truck"></i>
+                    <span>Fornecedores</span>
+                </a>
+            </li>
             <?php endif; ?>
             
             <?php if (userCan('usuarios', 'visualizar')): ?>
