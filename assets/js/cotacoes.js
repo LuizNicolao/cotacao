@@ -2664,34 +2664,3 @@ function atualizarContadoresCards() {
 document.addEventListener('DOMContentLoaded', function() {
     atualizarContadoresCards();
 });
-
-// ... existing code ...
-    // Mostrar/esconder campos de emergência
-    tipoCompraRadios.forEach(radio => {
-        radio.addEventListener('change', function() {
-            const justificativaEmerencial = document.getElementById('justificativa-emergencial');
-            const justificativaPadrao = document.getElementById('justificativa-padrao');
-            const justificativaPersonalizada = document.getElementById('justificativa-personalizada');
-            
-            if (this.value === 'emergencial') {
-                justificativaEmerencial.style.display = 'block';
-                justificativaPadrao.setAttribute('required', 'required');
-                if (justificativaPersonalizada) {
-                    justificativaPersonalizada.setAttribute('required', 'required');
-                }
-            } else {
-                justificativaEmerencial.style.display = 'none';
-                justificativaPadrao.removeAttribute('required');
-                if (justificativaPersonalizada) {
-                    justificativaPersonalizada.removeAttribute('required');
-                }
-                // Resetar campos quando mudar para programada
-                justificativaPadrao.value = '';
-                if (justificativaPersonalizada) {
-                    justificativaPersonalizada.value = '';
-                }
-                document.getElementById('justificativa-personalizada-container').style.display = 'none';
-            }
-        });
-    });
-// ... existing code ...
