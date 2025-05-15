@@ -280,50 +280,48 @@ try {
                         }
                         
                         // Buscar o maior produto_id existente para esta cotação e fornecedor
-                        $stmt = $conn->prepare("SELECT MAX(produto_id) as max_id FROM itens_cotacao WHERE cotacao_id = ? AND fornecedor_nome = ?");
-                        
-                        foreach ($dados['fornecedores'] as $fornecedor) {
-                            // Buscar o maior produto_id para este fornecedor
-                            $stmt->execute([$cotacao_id, $fornecedor['fornecedor_nome']]);
+                        $stmt = $conn->prepare("SELECT MAX(produto_id) as max_id FROM itens_cotacao WHERE cotacao_id = ?");
+                        $stmt->execute([$cotacao_id]);
                         $result = $stmt->fetch(PDO::FETCH_ASSOC);
                         $produto_id = ($result['max_id'] ?? 0) + 1;
 
+                        foreach ($dados['fornecedores'] as $fornecedor) {
                             foreach ($fornecedor['produtos'] as $produto) {
-                        $stmt = $conn->prepare("
-                            INSERT INTO itens_cotacao (
-                                cotacao_id, 
-                                produto_id,
-                                produto_nome, 
-                                fornecedor_nome, 
-                                quantidade, 
-                                valor_unitario, 
-                                valor_total, 
-                                unidade,
-                                prazo_entrega,
-                                frete,
-                                difal,
-                                prazo_pagamento,
-                                primeiro_valor
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ");
-                        
-                            $valorTotal = floatval($produto['quantidade']) * floatval($produto['valor_unitario']);
-                            
-                            $stmt->execute([
-                                $cotacao_id,
-                                $produto_id++,
-                                $produto['nome'],
-                                $fornecedor['fornecedor_nome'],
-                                $produto['quantidade'],
-                                $produto['valor_unitario'],
-                                $valorTotal,
-                                $produto['unidade'],
-                                $fornecedor['prazo_entrega'] ?? null,
-                                $fornecedor['frete'] ?? 0,
-                                $fornecedor['difal'] ?? 0,
-                                $fornecedor['prazo_pagamento'] ?? null,
-                                $produto['valor_unitario']
-                            ]);
+                                $stmt = $conn->prepare("
+                                    INSERT INTO itens_cotacao (
+                                        cotacao_id, 
+                                        produto_id,
+                                        produto_nome, 
+                                        fornecedor_nome, 
+                                        quantidade, 
+                                        valor_unitario, 
+                                        valor_total, 
+                                        unidade,
+                                        prazo_entrega,
+                                        frete,
+                                        difal,
+                                        prazo_pagamento,
+                                        primeiro_valor
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                ");
+                                
+                                $valorTotal = floatval($produto['quantidade']) * floatval($produto['valor_unitario']);
+                                
+                                $stmt->execute([
+                                    $cotacao_id,
+                                    $produto_id++,
+                                    $produto['nome'],
+                                    $fornecedor['fornecedor_nome'],
+                                    $produto['quantidade'],
+                                    $produto['valor_unitario'],
+                                    $valorTotal,
+                                    $produto['unidade'],
+                                    $fornecedor['prazo_entrega'] ?? null,
+                                    $fornecedor['frete'] ?? 0,
+                                    $fornecedor['difal'] ?? 0,
+                                    $fornecedor['prazo_pagamento'] ?? null,
+                                    $produto['valor_unitario']
+                                ]);
                             }
                         }
                         
@@ -391,50 +389,48 @@ try {
                         }
                         
                         // Buscar o maior produto_id existente para esta cotação e fornecedor
-                        $stmt = $conn->prepare("SELECT MAX(produto_id) as max_id FROM itens_cotacao WHERE cotacao_id = ? AND fornecedor_nome = ?");
-                        
-                        foreach ($dados['fornecedores'] as $fornecedor) {
-                            // Buscar o maior produto_id para este fornecedor
-                            $stmt->execute([$cotacao_id, $fornecedor['fornecedor_nome']]);
+                        $stmt = $conn->prepare("SELECT MAX(produto_id) as max_id FROM itens_cotacao WHERE cotacao_id = ?");
+                        $stmt->execute([$cotacao_id]);
                         $result = $stmt->fetch(PDO::FETCH_ASSOC);
                         $produto_id = ($result['max_id'] ?? 0) + 1;
 
+                        foreach ($dados['fornecedores'] as $fornecedor) {
                             foreach ($fornecedor['produtos'] as $produto) {
-                        $stmt = $conn->prepare("
-                            INSERT INTO itens_cotacao (
-                                cotacao_id, 
-                                produto_id,
-                                produto_nome, 
-                                fornecedor_nome, 
-                                quantidade, 
-                                valor_unitario, 
-                                valor_total, 
-                                unidade,
-                                prazo_entrega,
-                                frete,
-                                difal,
-                                prazo_pagamento,
-                                primeiro_valor
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ");
-                        
-                            $valorTotal = floatval($produto['quantidade']) * floatval($produto['valor_unitario']);
-                            
-                            $stmt->execute([
-                                $cotacao_id,
-                                $produto_id++,
-                                $produto['nome'],
-                                $fornecedor['fornecedor_nome'],
-                                $produto['quantidade'],
-                                $produto['valor_unitario'],
-                                $valorTotal,
-                                $produto['unidade'],
-                                $fornecedor['prazo_entrega'] ?? null,
-                                $fornecedor['frete'] ?? 0,
-                                $fornecedor['difal'] ?? 0,
-                                $fornecedor['prazo_pagamento'] ?? null,
-                                $produto['valor_unitario']
-                            ]);
+                                $stmt = $conn->prepare("
+                                    INSERT INTO itens_cotacao (
+                                        cotacao_id, 
+                                        produto_id,
+                                        produto_nome, 
+                                        fornecedor_nome, 
+                                        quantidade, 
+                                        valor_unitario, 
+                                        valor_total, 
+                                        unidade,
+                                        prazo_entrega,
+                                        frete,
+                                        difal,
+                                        prazo_pagamento,
+                                        primeiro_valor
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                ");
+                                
+                                $valorTotal = floatval($produto['quantidade']) * floatval($produto['valor_unitario']);
+                                
+                                $stmt->execute([
+                                    $cotacao_id,
+                                    $produto_id++,
+                                    $produto['nome'],
+                                    $fornecedor['fornecedor_nome'],
+                                    $produto['quantidade'],
+                                    $produto['valor_unitario'],
+                                    $valorTotal,
+                                    $produto['unidade'],
+                                    $fornecedor['prazo_entrega'] ?? null,
+                                    $fornecedor['frete'] ?? 0,
+                                    $fornecedor['difal'] ?? 0,
+                                    $fornecedor['prazo_pagamento'] ?? null,
+                                    $produto['valor_unitario']
+                                ]);
                             }
                         }
                         
